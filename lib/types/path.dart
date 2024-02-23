@@ -1,7 +1,7 @@
-// @JS()
-// library path;
+@JS()
+library path;
 
-// import 'dart:js_interop';
+import 'dart:js_interop';
 
-// @JS()
-// external String dirname(String path);
+@JS()
+external String dirname(String path);

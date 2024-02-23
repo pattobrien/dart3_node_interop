@@ -2,8 +2,7 @@
 
 import 'dart:js_interop';
 
-import 'package:dart3_node_interop/types/console.dart';
-import 'package:dart3_node_interop/types/fs.dart';
+import 'package:dart3_node_interop/dart3_node_interop.dart';
 
 void main() {
   final thisDir = '/Users/pattobrien/dev/pattobrien/dart3_node_interop';
