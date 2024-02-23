@@ -1,7 +1,0 @@
-// {
-//   "compilerOptions": {
-//     "checkJs": true,
-//     "lib": [] // Specify an empty array to not include any default library files (like lib.dom.d.ts)
-//   },
-//   "exclude": ["node_modules"]
-// }

@@ -30,119 +30,6 @@
 //    if this function is defined, it will be called at each entry of a
 //    method or constructor. Used only when compiling programs with
 //    --experiment-call-instrumentation.
-var dartNodeIsActuallyNode = typeof process !== "undefined" && (process.versions || {}).hasOwnProperty('node');
-
-// make sure to keep this as 'var'
-// we don't want block scoping
-var self = dartNodeIsActuallyNode ? Object.create(globalThis) : globalThis;
-
-self.scheduleImmediate = typeof setImmediate !== "undefined"
-    ? function (cb) {
-        setImmediate(cb);
-      }
-    : function(cb) {
-        setTimeout(cb, 0);
-      };
-
-// CommonJS globals.
-if (typeof require !== "undefined") {
-  self.require = require;
-}
-if (typeof exports !== "undefined") {
-  self.exports = exports;
-}
-
-// Node.js specific exports, check to see if they exist & or polyfilled
-
-if (typeof process !== "undefined") {
-  self.process = process;
-}
-
-if (typeof __dirname !== "undefined") {
-  self.__dirname = __dirname;
-}
-
-if (typeof __filename !== "undefined") {
-  self.__filename = __filename;
-}
-
-if (typeof Buffer !== "undefined") {
-  self.Buffer = Buffer;
-}
-
-// if we're running in a browser, Dart supports most of this out of box
-// make sure we only run these in Node.js environment
-
-if (dartNodeIsActuallyNode) {
-  // This line is to:
-  // 1) Prevent Webpack from bundling.
-  // 2) In Webpack on Node.js, make sure we're using the native Node.js require, which is available via __non_webpack_require__
-  // https://github.com/mbullington/node_preamble.dart/issues/18#issuecomment-527305561
-  var url = ("undefined" !== typeof __webpack_require__ ? __non_webpack_require__ : require)("url");
-
-  // Setting `self.location=` in Electron throws a `TypeError`, so we define it
-  // as a property instead to be safe.
-  Object.defineProperty(self, "location", {
-    value: {
-      get href() {
-        if (url.pathToFileURL) {
-          return url.pathToFileURL(process.cwd()).href + "/";
-        } else {
-          // This isn't really a correct transformation, but it's the best we have
-          // for versions of Node <10.12.0 which introduced `url.pathToFileURL()`.
-          // For example, it will fail for paths that contain characters that need
-          // to be escaped in URLs.
-          return "file://" + (function() {
-            var cwd = process.cwd();
-            if (process.platform != "win32") return cwd;
-            return "/" + cwd.replace(/\\/g, "/");
-          })() + "/"
-        }
-      }
-    }
-  });
-
-  (function() {
-    function computeCurrentScript() {
-      try {
-        throw new Error();
-      } catch(e) {
-        var stack = e.stack;
-        var re = new RegExp("^ *at [^(]*\\((.*):[0-9]*:[0-9]*\\)$", "mg");
-        var lastMatch = null;
-        do {
-          var match = re.exec(stack);
-          if (match != null) lastMatch = match;
-        } while (match != null);
-        return lastMatch[1];
-      }
-    }
-
-    // Setting `self.document=` isn't known to throw an error anywhere like
-    // `self.location=` does on Electron, but it's better to be future-proof
-    // just in case..
-    var cachedCurrentScript = null;
-    Object.defineProperty(self, "document", {
-      value: {
-        get currentScript() {
-          if (cachedCurrentScript == null) {
-            cachedCurrentScript = {src: computeCurrentScript()};
-          }
-          return cachedCurrentScript;
-        }
-      }
-    });
-  })();
-
-  self.dartDeferredLibraryLoader = function(uri, successCallback, errorCallback) {
-    try {
-     load(uri);
-      successCallback();
-    } catch (error) {
-      errorCallback(error);
-    }
-  };
-}
 (function dartProgram() {
   function copyProperties(from, to) {
     var keys = Object.keys(from);
@@ -419,10 +306,6 @@ if (dartNodeIsActuallyNode) {
       }
       return B.UnknownJavaScriptObject_methods;
     },
-    JSArray_markFixedList(list, $T) {
-      list.fixed$length = Array;
-      return list;
-    },
     getInterceptor$(receiver) {
       if (typeof receiver == "number") {
         if (Math.floor(receiver) == receiver)
@@ -497,9 +380,6 @@ if (dartNodeIsActuallyNode) {
     get$runtimeType$(receiver) {
       return J.getInterceptor$(receiver).get$runtimeType(receiver);
     },
-    elementAt$1$ax(receiver, a0) {
-      return J.getInterceptor$ax(receiver).elementAt$1(receiver, a0);
-    },
     toString$0$(receiver) {
       return J.getInterceptor$(receiver).toString$0(receiver);
     },
@@ -558,10 +438,6 @@ if (dartNodeIsActuallyNode) {
     LateError: function LateError(t0) {
       this._message = t0;
     },
-    EfficientLengthIterable: function EfficientLengthIterable() {
-    },
-    ListIterable: function ListIterable() {
-    },
     ListIterator: function ListIterator(t0, t1, t2) {
       var _ = this;
       _.__internal$_iterable = t0;
@@ -569,11 +445,6 @@ if (dartNodeIsActuallyNode) {
       _.__internal$_index = 0;
       _.__internal$_current = null;
       _.$ti = t2;
-    },
-    MappedListIterable: function MappedListIterable(t0, t1, t2) {
-      this._source = t0;
-      this._f = t1;
-      this.$ti = t2;
     },
     FixedLengthListMixin: function FixedLengthListMixin() {
     },
@@ -649,8 +520,8 @@ if (dartNodeIsActuallyNode) {
         return new A.ArgumentError(true, index, _s5_, null);
       $length = J.get$length$asx(indexable);
       if (index < 0 || index >= $length)
-        return A.IndexError$withLength(index, $length, indexable, _s5_);
-      return new A.RangeError(null, null, true, index, _s5_, "Value not in range");
+        return new A.IndexError($length, true, index, _s5_, "Index out of range");
+      return new A.RangeError(true, index, _s5_, "Value not in range");
     },
     wrapException(ex) {
       return A.initializeExceptionWrapper(new Error(), ex);
@@ -877,15 +748,17 @@ if (dartNodeIsActuallyNode) {
       return closure._interceptor;
     },
     BoundClosure__computeFieldNamed(fieldName) {
-      var t1, i, $name,
+      var names, i, $name,
         template = new A.BoundClosure("receiver", "interceptor"),
-        names = J.JSArray_markFixedList(Object.getOwnPropertyNames(template), type$.nullable_Object);
+        t1 = Object.getOwnPropertyNames(template);
+      t1.fixed$length = Array;
+      names = t1;
       for (t1 = names.length, i = 0; i < t1; ++i) {
         $name = names[i];
         if (template[$name] === fieldName)
           return $name;
       }
-      throw A.wrapException(A.ArgumentError$("Field name " + fieldName + " not found."));
+      throw A.wrapException(new A.ArgumentError(false, null, null, "Field name " + fieldName + " not found."));
     },
     throwCyclicInit(staticName) {
       throw A.wrapException(new A._CyclicInitializationError(staticName));
@@ -2727,12 +2600,6 @@ if (dartNodeIsActuallyNode) {
     AssertionError$(message) {
       return new A.AssertionError(message);
     },
-    ArgumentError$(message) {
-      return new A.ArgumentError(false, null, null, message);
-    },
-    IndexError$withLength(invalidValue, $length, indexable, $name) {
-      return new A.IndexError($length, true, invalidValue, $name, "Index out of range");
-    },
     UnsupportedError$(message) {
       return new A.UnsupportedError(message);
     },
@@ -2741,25 +2608,6 @@ if (dartNodeIsActuallyNode) {
     },
     ConcurrentModificationError$(modifiedObject) {
       return new A.ConcurrentModificationError(modifiedObject);
-    },
-    Iterable_iterableToShortString(iterable, leftDelimiter, rightDelimiter) {
-      var parts, t1;
-      if (A.isToStringVisiting(iterable)) {
-        if (leftDelimiter === "(" && rightDelimiter === ")")
-          return "(...)";
-        return leftDelimiter + "..." + rightDelimiter;
-      }
-      parts = A._setArrayType([], type$.JSArray_String);
-      B.JSArray_methods.add$1($.toStringVisiting, iterable);
-      try {
-        A._iterablePartsToStrings(iterable, parts);
-      } finally {
-        if (0 >= $.toStringVisiting.length)
-          return A.ioore($.toStringVisiting, -1);
-        $.toStringVisiting.pop();
-      }
-      t1 = A.StringBuffer__writeAll(leftDelimiter, type$.Iterable_dynamic._as(parts), ", ") + rightDelimiter;
-      return t1.charCodeAt(0) == 0 ? t1 : t1;
     },
     Iterable_iterableToFullString(iterable, leftDelimiter, rightDelimiter) {
       var buffer, t1;
@@ -2779,97 +2627,6 @@ if (dartNodeIsActuallyNode) {
       t1 = buffer._contents;
       return t1.charCodeAt(0) == 0 ? t1 : t1;
     },
-    _iterablePartsToStrings(iterable, parts) {
-      var $length, count, t2, next, ultimateString, penultimateString, penultimate, ultimate, ultimate0, elision,
-        t1 = iterable.$ti,
-        it = new A.ListIterator(iterable, iterable.get$length(0), t1._eval$1("ListIterator<ListIterable.E>"));
-      t1 = t1._eval$1("ListIterable.E");
-      $length = 0;
-      count = 0;
-      while (true) {
-        if (!($length < 80 || count < 3))
-          break;
-        if (!it.moveNext$0())
-          return;
-        t2 = it.__internal$_current;
-        next = A.S(t2 == null ? t1._as(t2) : t2);
-        B.JSArray_methods.add$1(parts, next);
-        $length += next.length + 2;
-        ++count;
-      }
-      if (!it.moveNext$0()) {
-        if (count <= 5)
-          return;
-        if (0 >= parts.length)
-          return A.ioore(parts, -1);
-        ultimateString = parts.pop();
-        if (0 >= parts.length)
-          return A.ioore(parts, -1);
-        penultimateString = parts.pop();
-      } else {
-        penultimate = it.__internal$_current;
-        if (penultimate == null)
-          penultimate = t1._as(penultimate);
-        ++count;
-        if (!it.moveNext$0()) {
-          if (count <= 4) {
-            B.JSArray_methods.add$1(parts, A.S(penultimate));
-            return;
-          }
-          ultimateString = A.S(penultimate);
-          if (0 >= parts.length)
-            return A.ioore(parts, -1);
-          penultimateString = parts.pop();
-          $length += ultimateString.length + 2;
-        } else {
-          ultimate = it.__internal$_current;
-          if (ultimate == null)
-            ultimate = t1._as(ultimate);
-          ++count;
-          for (; it.moveNext$0(); penultimate = ultimate, ultimate = ultimate0) {
-            ultimate0 = it.__internal$_current;
-            if (ultimate0 == null)
-              ultimate0 = t1._as(ultimate0);
-            ++count;
-            if (count > 100) {
-              while (true) {
-                if (!($length > 75 && count > 3))
-                  break;
-                if (0 >= parts.length)
-                  return A.ioore(parts, -1);
-                $length -= parts.pop().length + 2;
-                --count;
-              }
-              B.JSArray_methods.add$1(parts, "...");
-              return;
-            }
-          }
-          penultimateString = A.S(penultimate);
-          ultimateString = A.S(ultimate);
-          $length += ultimateString.length + penultimateString.length + 4;
-        }
-      }
-      if (count > parts.length + 2) {
-        $length += 5;
-        elision = "...";
-      } else
-        elision = null;
-      while (true) {
-        if (!($length > 80 && parts.length > 3))
-          break;
-        if (0 >= parts.length)
-          return A.ioore(parts, -1);
-        $length -= parts.pop().length + 2;
-        if (elision == null) {
-          $length += 5;
-          elision = "...";
-        }
-      }
-      if (elision != null)
-        B.JSArray_methods.add$1(parts, elision);
-      B.JSArray_methods.add$1(parts, penultimateString);
-      B.JSArray_methods.add$1(parts, ultimateString);
-    },
     Error: function Error() {
     },
     AssertionError: function AssertionError(t0) {
@@ -2884,14 +2641,12 @@ if (dartNodeIsActuallyNode) {
       _.name = t2;
       _.message = t3;
     },
-    RangeError: function RangeError(t0, t1, t2, t3, t4, t5) {
+    RangeError: function RangeError(t0, t1, t2, t3) {
       var _ = this;
-      _.start = t0;
-      _.end = t1;
-      _._hasValue = t2;
-      _.invalidValue = t3;
-      _.name = t4;
-      _.message = t5;
+      _._hasValue = t0;
+      _.invalidValue = t1;
+      _.name = t2;
+      _.message = t3;
     },
     IndexError: function IndexError(t0, t1, t2, t3, t4) {
       var _ = this;
@@ -2910,8 +2665,6 @@ if (dartNodeIsActuallyNode) {
     ConcurrentModificationError: function ConcurrentModificationError(t0) {
       this.modifiedObject = t0;
     },
-    Iterable: function Iterable() {
-    },
     Null: function Null() {
     },
     Object: function Object() {
@@ -2919,33 +2672,12 @@ if (dartNodeIsActuallyNode) {
     StringBuffer: function StringBuffer(t0) {
       this._contents = t0;
     },
-    getPreamble() {
-      return 'var dartNodeIsActuallyNode = typeof process !== "undefined" && (process.versions || {}).hasOwnProperty(\'node\');\n\n// make sure to keep this as \'var\'\n// we don\'t want block scoping\nvar self = dartNodeIsActuallyNode ? Object.create(globalThis) : globalThis;\n\nself.scheduleImmediate = typeof setImmediate !== "undefined"\n    ? function (cb) {\n        setImmediate(cb);\n      }\n    : function(cb) {\n        setTimeout(cb, 0);\n      };\n\n// CommonJS globals.\nif (typeof require !== "undefined") {\n  self.require = require;\n}\nif (typeof exports !== "undefined") {\n  self.exports = exports;\n}\n\n// Node.js specific exports, check to see if they exist & or polyfilled\n\nif (typeof process !== "undefined") {\n  self.process = process;\n}\n\nif (typeof __dirname !== "undefined") {\n  self.__dirname = __dirname;\n}\n\nif (typeof __filename !== "undefined") {\n  self.__filename = __filename;\n}\n\nif (typeof Buffer !== "undefined") {\n  self.Buffer = Buffer;\n}\n\n// if we\'re running in a browser, Dart supports most of this out of box\n// make sure we only run these in Node.js environment\n\nif (dartNodeIsActuallyNode) {\n  // This line is to:\n  // 1) Prevent Webpack from bundling.\n  // 2) In Webpack on Node.js, make sure we\'re using the native Node.js require, which is available via __non_webpack_require__\n  // https://github.com/mbullington/node_preamble.dart/issues/18#issuecomment-527305561\n  var url = ("undefined" !== typeof __webpack_require__ ? __non_webpack_require__ : require)("url");\n\n  // Setting `self.location=` in Electron throws a `TypeError`, so we define it\n  // as a property instead to be safe.\n  Object.defineProperty(self, "location", {\n    value: {\n      get href() {\n        if (url.pathToFileURL) {\n          return url.pathToFileURL(process.cwd()).href + "/";\n        } else {\n          // This isn\'t really a correct transformation, but it\'s the best we have\n          // for versions of Node <10.12.0 which introduced `url.pathToFileURL()`.\n          // For example, it will fail for paths that contain characters that need\n          // to be escaped in URLs.\n          return "file://" + (function() {\n            var cwd = process.cwd();\n            if (process.platform != "win32") return cwd;\n            return "/" + cwd.replace(/\\\\/g, "/");\n          })() + "/"\n        }\n      }\n    }\n  });\n\n  (function() {\n    function computeCurrentScript() {\n      try {\n        throw new Error();\n      } catch(e) {\n        var stack = e.stack;\n        var re = new RegExp("^ *at [^(]*\\\\((.*):[0-9]*:[0-9]*\\\\)$", "mg");\n        var lastMatch = null;\n        do {\n          var match = re.exec(stack);\n          if (match != null) lastMatch = match;\n        } while (match != null);\n        return lastMatch[1];\n      }\n    }\n\n    // Setting `self.document=` isn\'t known to throw an error anywhere like\n    // `self.location=` does on Electron, but it\'s better to be future-proof\n    // just in case..\n    var cachedCurrentScript = null;\n    Object.defineProperty(self, "document", {\n      value: {\n        get currentScript() {\n          if (cachedCurrentScript == null) {\n            cachedCurrentScript = {src: computeCurrentScript()};\n          }\n          return cachedCurrentScript;\n        }\n      }\n    });\n  })();\n\n  self.dartDeferredLibraryLoader = function(uri, successCallback, errorCallback) {\n    try {\n     load(uri);\n      successCallback();\n    } catch (error) {\n      errorCallback(error);\n    }\n  };\n}\n' + new A.MappedListIterable(B.List_empty, type$.String_Function_String._as(new A.getPreamble_closure()), type$.MappedListIterable_String_String).join$0(0);
-    },
-    getPreamble_closure: function getPreamble_closure() {
-    },
-    printString(string) {
-      if (typeof dartPrint == "function") {
-        dartPrint(string);
-        return;
-      }
-      if (typeof console == "object" && typeof console.log != "undefined") {
-        console.log(string);
-        return;
-      }
-      if (typeof print == "function") {
-        print(string);
-        return;
-      }
-      throw "Unable to print message: " + String(string);
-    },
     throwLateFieldADI(fieldName) {
       A.throwExpressionWithWrapper(new A.LateError("Field '" + fieldName + "' has been assigned during initialization."), new Error());
     },
     main() {
-      A.printString(A.getPreamble());
       var t1 = type$.JSObject._as(self.console);
-      t1.log.apply(t1, ["Hello world!"]);
+      t1.error.apply(t1, ["Hello world from console!"]);
     }
   },
   B = {};
@@ -3009,11 +2741,6 @@ if (dartNodeIsActuallyNode) {
         A.throwExpression(A.UnsupportedError$("add"));
       receiver.push(value);
     },
-    elementAt$1(receiver, index) {
-      if (!(index < receiver.length))
-        return A.ioore(receiver, index);
-      return receiver[index];
-    },
     toString$0(receiver) {
       return A.Iterable_iterableToFullString(receiver, "[", "]");
     },
@@ -3062,8 +2789,7 @@ if (dartNodeIsActuallyNode) {
     get$runtimeType(receiver) {
       return A.createRuntimeType(type$.num);
     },
-    $isdouble: 1,
-    $isnum: 1
+    $isdouble: 1
   };
   J.JSInt.prototype = {
     get$runtimeType(receiver) {
@@ -3099,21 +2825,6 @@ if (dartNodeIsActuallyNode) {
       return "LateInitializationError: " + this._message;
     }
   };
-  A.EfficientLengthIterable.prototype = {};
-  A.ListIterable.prototype = {
-    join$0(_) {
-      var t3, i, t4,
-        t1 = this._source,
-        t2 = J.getInterceptor$asx(t1),
-        $length = t2.get$length(t1);
-      for (t3 = this._f, i = 0, t4 = ""; i < $length; ++i) {
-        t4 += A.S(t3.call$1(t2.elementAt$1(t1, i)));
-        if ($length !== t2.get$length(t1))
-          throw A.wrapException(A.ConcurrentModificationError$(this));
-      }
-      return t4.charCodeAt(0) == 0 ? t4 : t4;
-    }
-  };
   A.ListIterator.prototype = {
     get$current() {
       var t1 = this.__internal$_current;
@@ -3131,20 +2842,12 @@ if (dartNodeIsActuallyNode) {
         _this.set$__internal$_current(null);
         return false;
       }
-      _this.set$__internal$_current(t2.elementAt$1(t1, t3));
+      _this.set$__internal$_current(t2.$index(t1, t3));
       ++_this.__internal$_index;
       return true;
     },
     set$__internal$_current(_current) {
       this.__internal$_current = this.$ti._eval$1("1?")._as(_current);
-    }
-  };
-  A.MappedListIterable.prototype = {
-    get$length(_) {
-      return J.get$length$asx(this._source);
-    },
-    elementAt$1(_, index) {
-      return this._f.call$1(J.elementAt$1$ax(this._source, index));
     }
   };
   A.FixedLengthListMixin.prototype = {};
@@ -3347,9 +3050,6 @@ if (dartNodeIsActuallyNode) {
     get$iterator(receiver) {
       return new A.ListIterator(receiver, this.get$length(receiver), A.instanceType(receiver)._eval$1("ListIterator<ListBase.E>"));
     },
-    elementAt$1(receiver, index) {
-      return this.$index(receiver, index);
-    },
     toString$0(receiver) {
       return A.Iterable_iterableToFullString(receiver, "[", "]");
     }
@@ -3394,18 +3094,7 @@ if (dartNodeIsActuallyNode) {
       return "RangeError";
     },
     get$_errorExplanation() {
-      var explanation,
-        start = this.start,
-        end = this.end;
-      if (start == null)
-        explanation = end != null ? ": Not less than or equal to " + A.S(end) : "";
-      else if (end == null)
-        explanation = ": Not greater than or equal to " + A.S(start);
-      else if (end > start)
-        explanation = ": Not in inclusive range " + A.S(start) + ".." + A.S(end);
-      else
-        explanation = end < start ? ": Valid value range is empty" : ": Only valid value is " + A.S(start);
-      return explanation;
+      return "";
     }
   };
   A.IndexError.prototype = {
@@ -3442,18 +3131,6 @@ if (dartNodeIsActuallyNode) {
       return "Concurrent modification during iteration: " + A.Error_safeToString(this.modifiedObject) + ".";
     }
   };
-  A.Iterable.prototype = {
-    get$length(_) {
-      var count,
-        it = new A.ListIterator(this, this.get$length(0), this.$ti._eval$1("ListIterator<ListIterable.E>"));
-      for (count = 0; it.moveNext$0();)
-        ++count;
-      return count;
-    },
-    toString$0(_) {
-      return A.Iterable_iterableToShortString(this, "(", ")");
-    }
-  };
   A.Null.prototype = {
     toString$0(_) {
       return "null";
@@ -3479,13 +3156,6 @@ if (dartNodeIsActuallyNode) {
       return t1.charCodeAt(0) == 0 ? t1 : t1;
     }
   };
-  A.getPreamble_closure.prototype = {
-    call$1(global) {
-      A._asString(global);
-      return "self." + global + "=" + global + ";";
-    },
-    $signature: 3
-  };
   (function aliases() {
     var _ = J.LegacyJavaScriptObject.prototype;
     _.super$LegacyJavaScriptObject$toString = _.toString$0;
@@ -3495,17 +3165,14 @@ if (dartNodeIsActuallyNode) {
       _inherit = hunkHelpers.inherit,
       _inheritMany = hunkHelpers.inheritMany;
     _inherit(A.Object, null);
-    _inheritMany(A.Object, [A.JS_CONST, J.Interceptor, J.ArrayIterator, A.Error, A.Iterable, A.ListIterator, A.FixedLengthListMixin, A.Closure, A.Rti, A._FunctionParameters, A._Type, A.ListBase, A.Null, A.StringBuffer]);
+    _inheritMany(A.Object, [A.JS_CONST, J.Interceptor, J.ArrayIterator, A.Error, A.ListIterator, A.FixedLengthListMixin, A.Closure, A.Rti, A._FunctionParameters, A._Type, A.ListBase, A.Null, A.StringBuffer]);
     _inheritMany(J.Interceptor, [J.JSBool, J.JSNull, J.JavaScriptObject, J.JavaScriptBigInt, J.JavaScriptSymbol, J.JSNumber, J.JSString]);
     _inheritMany(J.JavaScriptObject, [J.LegacyJavaScriptObject, J.JSArray, A.NativeByteBuffer, A.NativeTypedData]);
     _inheritMany(J.LegacyJavaScriptObject, [J.PlainJavaScriptObject, J.UnknownJavaScriptObject, J.JavaScriptFunction]);
     _inherit(J.JSUnmodifiableArray, J.JSArray);
     _inheritMany(J.JSNumber, [J.JSInt, J.JSNumNotInt]);
     _inheritMany(A.Error, [A.LateError, A._CyclicInitializationError, A.RuntimeError, A._Error, A.AssertionError, A.TypeError, A.ArgumentError, A.UnsupportedError, A.UnimplementedError, A.ConcurrentModificationError]);
-    _inherit(A.EfficientLengthIterable, A.Iterable);
-    _inherit(A.ListIterable, A.EfficientLengthIterable);
-    _inherit(A.MappedListIterable, A.ListIterable);
-    _inheritMany(A.Closure, [A.Closure2Args, A.TearOffClosure, A.initHooks_closure, A.initHooks_closure1, A.getPreamble_closure]);
+    _inheritMany(A.Closure, [A.Closure2Args, A.TearOffClosure, A.initHooks_closure, A.initHooks_closure1]);
     _inheritMany(A.TearOffClosure, [A.StaticClosure, A.BoundClosure]);
     _inherit(A.initHooks_closure0, A.Closure2Args);
     _inheritMany(A.NativeTypedData, [A.NativeByteData, A.NativeTypedArray]);
@@ -3527,30 +3194,27 @@ if (dartNodeIsActuallyNode) {
     typeUniverse: {eC: new Map(), tR: {}, eT: {}, tPV: {}, sEA: []},
     mangledGlobalNames: {int: "int", double: "double", num: "num", String: "String", bool: "bool", Null: "Null", List: "List", Object: "Object", Map: "Map"},
     mangledNames: {},
-    types: ["@(@)", "@(@,String)", "@(String)", "String(String)"],
+    types: ["@(@)", "@(@,String)", "@(String)"],
     interceptorsByTag: null,
     leafTags: null,
     arrayRti: Symbol("$ti")
   };
-  A._Universe_addRules(init.typeUniverse, JSON.parse('{"PlainJavaScriptObject":"LegacyJavaScriptObject","UnknownJavaScriptObject":"LegacyJavaScriptObject","JavaScriptFunction":"LegacyJavaScriptObject","JSBool":{"bool":[],"TrustedGetRuntimeType":[]},"JSNull":{"TrustedGetRuntimeType":[]},"JavaScriptObject":{"JSObject":[]},"LegacyJavaScriptObject":{"JSObject":[]},"JSArray":{"JSObject":[],"Iterable":["1"]},"JSUnmodifiableArray":{"JSArray":["1"],"JSObject":[],"Iterable":["1"]},"JSNumber":{"double":[],"num":[]},"JSInt":{"double":[],"int":[],"num":[],"TrustedGetRuntimeType":[]},"JSNumNotInt":{"double":[],"num":[],"TrustedGetRuntimeType":[]},"JSString":{"String":[],"TrustedGetRuntimeType":[]},"EfficientLengthIterable":{"Iterable":["1"]},"ListIterable":{"Iterable":["1"]},"MappedListIterable":{"ListIterable":["2"],"Iterable":["2"],"ListIterable.E":"2"},"NativeByteBuffer":{"JSObject":[],"TrustedGetRuntimeType":[]},"NativeTypedData":{"JSObject":[]},"NativeByteData":{"JSObject":[],"TrustedGetRuntimeType":[]},"NativeTypedArray":{"JavaScriptIndexingBehavior":["1"],"JSObject":[]},"NativeTypedArrayOfDouble":{"ListBase":["double"],"JavaScriptIndexingBehavior":["double"],"JSObject":[],"Iterable":["double"],"FixedLengthListMixin":["double"]},"NativeTypedArrayOfInt":{"ListBase":["int"],"JavaScriptIndexingBehavior":["int"],"JSObject":[],"Iterable":["int"],"FixedLengthListMixin":["int"]},"NativeFloat32List":{"ListBase":["double"],"JavaScriptIndexingBehavior":["double"],"JSObject":[],"Iterable":["double"],"FixedLengthListMixin":["double"],"TrustedGetRuntimeType":[],"ListBase.E":"double"},"NativeFloat64List":{"ListBase":["double"],"JavaScriptIndexingBehavior":["double"],"JSObject":[],"Iterable":["double"],"FixedLengthListMixin":["double"],"TrustedGetRuntimeType":[],"ListBase.E":"double"},"NativeInt16List":{"ListBase":["int"],"JavaScriptIndexingBehavior":["int"],"JSObject":[],"Iterable":["int"],"FixedLengthListMixin":["int"],"TrustedGetRuntimeType":[],"ListBase.E":"int"},"NativeInt32List":{"ListBase":["int"],"JavaScriptIndexingBehavior":["int"],"JSObject":[],"Iterable":["int"],"FixedLengthListMixin":["int"],"TrustedGetRuntimeType":[],"ListBase.E":"int"},"NativeInt8List":{"ListBase":["int"],"JavaScriptIndexingBehavior":["int"],"JSObject":[],"Iterable":["int"],"FixedLengthListMixin":["int"],"TrustedGetRuntimeType":[],"ListBase.E":"int"},"NativeUint16List":{"ListBase":["int"],"JavaScriptIndexingBehavior":["int"],"JSObject":[],"Iterable":["int"],"FixedLengthListMixin":["int"],"TrustedGetRuntimeType":[],"ListBase.E":"int"},"NativeUint32List":{"ListBase":["int"],"JavaScriptIndexingBehavior":["int"],"JSObject":[],"Iterable":["int"],"FixedLengthListMixin":["int"],"TrustedGetRuntimeType":[],"ListBase.E":"int"},"NativeUint8ClampedList":{"ListBase":["int"],"JavaScriptIndexingBehavior":["int"],"JSObject":[],"Iterable":["int"],"FixedLengthListMixin":["int"],"TrustedGetRuntimeType":[],"ListBase.E":"int"},"NativeUint8List":{"ListBase":["int"],"JavaScriptIndexingBehavior":["int"],"JSObject":[],"Iterable":["int"],"FixedLengthListMixin":["int"],"TrustedGetRuntimeType":[],"ListBase.E":"int"},"double":{"num":[]},"int":{"num":[]},"Int8List":{"Iterable":["int"]},"Uint8List":{"Iterable":["int"]},"Uint8ClampedList":{"Iterable":["int"]},"Int16List":{"Iterable":["int"]},"Uint16List":{"Iterable":["int"]},"Int32List":{"Iterable":["int"]},"Uint32List":{"Iterable":["int"]},"Float32List":{"Iterable":["double"]},"Float64List":{"Iterable":["double"]}}'));
-  A._Universe_addErasedTypes(init.typeUniverse, JSON.parse('{"EfficientLengthIterable":1,"NativeTypedArray":1}'));
+  A._Universe_addRules(init.typeUniverse, JSON.parse('{"PlainJavaScriptObject":"LegacyJavaScriptObject","UnknownJavaScriptObject":"LegacyJavaScriptObject","JavaScriptFunction":"LegacyJavaScriptObject","JSBool":{"bool":[],"TrustedGetRuntimeType":[]},"JSNull":{"TrustedGetRuntimeType":[]},"JavaScriptObject":{"JSObject":[]},"LegacyJavaScriptObject":{"JSObject":[]},"JSArray":{"JSObject":[],"Iterable":["1"]},"JSUnmodifiableArray":{"JSArray":["1"],"JSObject":[],"Iterable":["1"]},"JSNumber":{"double":[]},"JSInt":{"double":[],"int":[],"TrustedGetRuntimeType":[]},"JSNumNotInt":{"double":[],"TrustedGetRuntimeType":[]},"JSString":{"String":[],"TrustedGetRuntimeType":[]},"NativeByteBuffer":{"JSObject":[],"TrustedGetRuntimeType":[]},"NativeTypedData":{"JSObject":[]},"NativeByteData":{"JSObject":[],"TrustedGetRuntimeType":[]},"NativeTypedArray":{"JavaScriptIndexingBehavior":["1"],"JSObject":[]},"NativeTypedArrayOfDouble":{"ListBase":["double"],"JavaScriptIndexingBehavior":["double"],"JSObject":[],"Iterable":["double"],"FixedLengthListMixin":["double"]},"NativeTypedArrayOfInt":{"ListBase":["int"],"JavaScriptIndexingBehavior":["int"],"JSObject":[],"Iterable":["int"],"FixedLengthListMixin":["int"]},"NativeFloat32List":{"ListBase":["double"],"JavaScriptIndexingBehavior":["double"],"JSObject":[],"Iterable":["double"],"FixedLengthListMixin":["double"],"TrustedGetRuntimeType":[],"ListBase.E":"double"},"NativeFloat64List":{"ListBase":["double"],"JavaScriptIndexingBehavior":["double"],"JSObject":[],"Iterable":["double"],"FixedLengthListMixin":["double"],"TrustedGetRuntimeType":[],"ListBase.E":"double"},"NativeInt16List":{"ListBase":["int"],"JavaScriptIndexingBehavior":["int"],"JSObject":[],"Iterable":["int"],"FixedLengthListMixin":["int"],"TrustedGetRuntimeType":[],"ListBase.E":"int"},"NativeInt32List":{"ListBase":["int"],"JavaScriptIndexingBehavior":["int"],"JSObject":[],"Iterable":["int"],"FixedLengthListMixin":["int"],"TrustedGetRuntimeType":[],"ListBase.E":"int"},"NativeInt8List":{"ListBase":["int"],"JavaScriptIndexingBehavior":["int"],"JSObject":[],"Iterable":["int"],"FixedLengthListMixin":["int"],"TrustedGetRuntimeType":[],"ListBase.E":"int"},"NativeUint16List":{"ListBase":["int"],"JavaScriptIndexingBehavior":["int"],"JSObject":[],"Iterable":["int"],"FixedLengthListMixin":["int"],"TrustedGetRuntimeType":[],"ListBase.E":"int"},"NativeUint32List":{"ListBase":["int"],"JavaScriptIndexingBehavior":["int"],"JSObject":[],"Iterable":["int"],"FixedLengthListMixin":["int"],"TrustedGetRuntimeType":[],"ListBase.E":"int"},"NativeUint8ClampedList":{"ListBase":["int"],"JavaScriptIndexingBehavior":["int"],"JSObject":[],"Iterable":["int"],"FixedLengthListMixin":["int"],"TrustedGetRuntimeType":[],"ListBase.E":"int"},"NativeUint8List":{"ListBase":["int"],"JavaScriptIndexingBehavior":["int"],"JSObject":[],"Iterable":["int"],"FixedLengthListMixin":["int"],"TrustedGetRuntimeType":[],"ListBase.E":"int"},"Int8List":{"Iterable":["int"]},"Uint8List":{"Iterable":["int"]},"Uint8ClampedList":{"Iterable":["int"]},"Int16List":{"Iterable":["int"]},"Uint16List":{"Iterable":["int"]},"Int32List":{"Iterable":["int"]},"Uint32List":{"Iterable":["int"]},"Float32List":{"Iterable":["double"]},"Float64List":{"Iterable":["double"]}}'));
+  A._Universe_addErasedTypes(init.typeUniverse, JSON.parse('{"NativeTypedArray":1}'));
   var type$ = (function rtii() {
     var findType = A.findType;
     return {
       Function: findType("Function"),
-      Iterable_dynamic: findType("Iterable<@>"),
       JSArray_String: findType("JSArray<String>"),
       JSArray_dynamic: findType("JSArray<@>"),
       JSNull: findType("JSNull"),
       JSObject: findType("JSObject"),
       JavaScriptFunction: findType("JavaScriptFunction"),
       JavaScriptIndexingBehavior_dynamic: findType("JavaScriptIndexingBehavior<@>"),
-      MappedListIterable_String_String: findType("MappedListIterable<String,String>"),
       Null: findType("Null"),
       Object: findType("Object"),
       Record: findType("Record"),
       String: findType("String"),
-      String_Function_String: findType("String(String)"),
       TrustedGetRuntimeType: findType("TrustedGetRuntimeType"),
       UnknownJavaScriptObject: findType("UnknownJavaScriptObject"),
       bool: findType("bool"),
@@ -3564,7 +3228,6 @@ if (dartNodeIsActuallyNode) {
     };
   })();
   (function constants() {
-    var makeConstList = hunkHelpers.makeConstList;
     B.Interceptor_methods = J.Interceptor.prototype;
     B.JSArray_methods = J.JSArray.prototype;
     B.JSString_methods = J.JSString.prototype;
@@ -3697,7 +3360,6 @@ if (dartNodeIsActuallyNode) {
 };
     B.C_JS_CONST3 = function(hooks) { return hooks; }
 ;
-    B.List_empty = A._setArrayType(makeConstList([]), type$.JSArray_String);
     B.Type_ByteBuffer_RkP = A.typeLiteral("ByteBuffer");
     B.Type_ByteData_zNC = A.typeLiteral("ByteData");
     B.Type_Float32List_LB7 = A.typeLiteral("Float32List");
