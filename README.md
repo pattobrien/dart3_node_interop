@@ -1,5 +1,7 @@
 # dart3-node-interop
 
+Interoperability with `node.js` using the latest Dart3 features.
+
 ## How to Run
 
 1. Run `webdev build --output bin:build` to generate the js. Files should be 
@@ -18,5 +20,10 @@ Compile dart program to js and run via `node build/foo.dart.js`.
 - [x] create a JS interop type that represents the console log
 - [x] verify platform agnostic type (e.g. `console`) can be run from browser.
 - [ ] create a JS interop type that only exists via an import (e.g. `fs`)
+- [ ] create a BROWSER JS interop type, and verify it doesn't work using node
+
+
+### Enhancements
 
 - [ ] see if preamble can be programatically added to existing `build_web_compilers`
+- [ ] can we get intellisense to work on generated code (possibly using `jsconfig.json`)?
