@@ -1,5 +1,6 @@
 .dart_tool/package_config.json
 .packages
+console_interop.dart.js
 hello_world.dart.js
 packages/$sdk/dev_compiler/amd/require.js
 packages/$sdk/dev_compiler/ddc/ddc_module_loader.js

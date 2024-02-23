@@ -30,6 +30,119 @@
 //    if this function is defined, it will be called at each entry of a
 //    method or constructor. Used only when compiling programs with
 //    --experiment-call-instrumentation.
+var dartNodeIsActuallyNode = typeof process !== "undefined" && (process.versions || {}).hasOwnProperty('node');
+
+// make sure to keep this as 'var'
+// we don't want block scoping
+var self = dartNodeIsActuallyNode ? Object.create(globalThis) : globalThis;
+
+self.scheduleImmediate = typeof setImmediate !== "undefined"
+    ? function (cb) {
+        setImmediate(cb);
+      }
+    : function(cb) {
+        setTimeout(cb, 0);
+      };
+
+// CommonJS globals.
+if (typeof require !== "undefined") {
+  self.require = require;
+}
+if (typeof exports !== "undefined") {
+  self.exports = exports;
+}
+
+// Node.js specific exports, check to see if they exist & or polyfilled
+
+if (typeof process !== "undefined") {
+  self.process = process;
+}
+
+if (typeof __dirname !== "undefined") {
+  self.__dirname = __dirname;
+}
+
+if (typeof __filename !== "undefined") {
+  self.__filename = __filename;
+}
+
+if (typeof Buffer !== "undefined") {
+  self.Buffer = Buffer;
+}
+
+// if we're running in a browser, Dart supports most of this out of box
+// make sure we only run these in Node.js environment
+
+if (dartNodeIsActuallyNode) {
+  // This line is to:
+  // 1) Prevent Webpack from bundling.
+  // 2) In Webpack on Node.js, make sure we're using the native Node.js require, which is available via __non_webpack_require__
+  // https://github.com/mbullington/node_preamble.dart/issues/18#issuecomment-527305561
+  var url = ("undefined" !== typeof __webpack_require__ ? __non_webpack_require__ : require)("url");
+
+  // Setting `self.location=` in Electron throws a `TypeError`, so we define it
+  // as a property instead to be safe.
+  Object.defineProperty(self, "location", {
+    value: {
+      get href() {
+        if (url.pathToFileURL) {
+          return url.pathToFileURL(process.cwd()).href + "/";
+        } else {
+          // This isn't really a correct transformation, but it's the best we have
+          // for versions of Node <10.12.0 which introduced `url.pathToFileURL()`.
+          // For example, it will fail for paths that contain characters that need
+          // to be escaped in URLs.
+          return "file://" + (function() {
+            var cwd = process.cwd();
+            if (process.platform != "win32") return cwd;
+            return "/" + cwd.replace(/\\/g, "/");
+          })() + "/"
+        }
+      }
+    }
+  });
+
+  (function() {
+    function computeCurrentScript() {
+      try {
+        throw new Error();
+      } catch(e) {
+        var stack = e.stack;
+        var re = new RegExp("^ *at [^(]*\\((.*):[0-9]*:[0-9]*\\)$", "mg");
+        var lastMatch = null;
+        do {
+          var match = re.exec(stack);
+          if (match != null) lastMatch = match;
+        } while (match != null);
+        return lastMatch[1];
+      }
+    }
+
+    // Setting `self.document=` isn't known to throw an error anywhere like
+    // `self.location=` does on Electron, but it's better to be future-proof
+    // just in case..
+    var cachedCurrentScript = null;
+    Object.defineProperty(self, "document", {
+      value: {
+        get currentScript() {
+          if (cachedCurrentScript == null) {
+            cachedCurrentScript = {src: computeCurrentScript()};
+          }
+          return cachedCurrentScript;
+        }
+      }
+    });
+  })();
+
+  self.dartDeferredLibraryLoader = function(uri, successCallback, errorCallback) {
+    try {
+     load(uri);
+      successCallback();
+    } catch (error) {
+      errorCallback(error);
+    }
+  };
+}
 (function dartProgram() {
   function copyProperties(from, to) {
     var keys = Object.keys(from);
@@ -253,6 +366,63 @@
     hunk(hunkHelpers, init, holders, $);
   }
   var J = {
+    makeDispatchRecord(interceptor, proto, extension, indexability) {
+      return {i: interceptor, p: proto, e: extension, x: indexability};
+    },
+    getNativeInterceptor(object) {
+      var proto, objectProto, $constructor, interceptor, t1,
+        record = object[init.dispatchPropertyName];
+      if (record == null)
+        if ($.initNativeDispatchFlag == null) {
+          A.initNativeDispatch();
+          record = object[init.dispatchPropertyName];
+        }
+      if (record != null) {
+        proto = record.p;
+        if (false === proto)
+          return record.i;
+        if (true === proto)
+          return object;
+        objectProto = Object.getPrototypeOf(object);
+        if (proto === objectProto)
+          return record.i;
+        if (record.e === objectProto)
+          throw A.wrapException(A.UnimplementedError$("Return interceptor for " + A.S(proto(object, record))));
+      }
+      $constructor = object.constructor;
+      if ($constructor == null)
+        interceptor = null;
+      else {
+        t1 = $._JS_INTEROP_INTERCEPTOR_TAG;
+        if (t1 == null)
+          t1 = $._JS_INTEROP_INTERCEPTOR_TAG = init.getIsolateTag("_$dart_js");
+        interceptor = $constructor[t1];
+      }
+      if (interceptor != null)
+        return interceptor;
+      interceptor = A.lookupAndCacheInterceptor(object);
+      if (interceptor != null)
+        return interceptor;
+      if (typeof object == "function")
+        return B.JavaScriptFunction_methods;
+      proto = Object.getPrototypeOf(object);
+      if (proto == null)
+        return B.PlainJavaScriptObject_methods;
+      if (proto === Object.prototype)
+        return B.PlainJavaScriptObject_methods;
+      if (typeof $constructor == "function") {
+        t1 = $._JS_INTEROP_INTERCEPTOR_TAG;
+        if (t1 == null)
+          t1 = $._JS_INTEROP_INTERCEPTOR_TAG = init.getIsolateTag("_$dart_js");
+        Object.defineProperty($constructor, t1, {value: B.UnknownJavaScriptObject_methods, enumerable: false, writable: true, configurable: true});
+        return B.UnknownJavaScriptObject_methods;
+      }
+      return B.UnknownJavaScriptObject_methods;
+    },
+    JSArray_markFixedList(list, $T) {
+      list.fixed$length = Array;
+      return list;
+    },
     getInterceptor$(receiver) {
       if (typeof receiver == "number") {
         if (Math.floor(receiver) == receiver)
@@ -267,29 +437,68 @@
         return J.JSBool.prototype;
       if (Array.isArray(receiver))
         return J.JSArray.prototype;
-      if (typeof receiver == "object") {
-        if (receiver instanceof A.Object) {
-          return receiver;
-        } else {
-          return J.JavaScriptObject.prototype;
-        }
+      if (typeof receiver != "object") {
+        if (typeof receiver == "function")
+          return J.JavaScriptFunction.prototype;
+        if (typeof receiver == "symbol")
+          return J.JavaScriptSymbol.prototype;
+        if (typeof receiver == "bigint")
+          return J.JavaScriptBigInt.prototype;
+        return receiver;
       }
-      return receiver;
+      if (receiver instanceof A.Object)
+        return receiver;
+      return J.getNativeInterceptor(receiver);
     },
-    getInterceptor$as(receiver) {
+    getInterceptor$asx(receiver) {
       if (typeof receiver == "string")
         return J.JSString.prototype;
       if (receiver == null)
         return receiver;
       if (Array.isArray(receiver))
         return J.JSArray.prototype;
-      return receiver;
+      if (typeof receiver != "object") {
+        if (typeof receiver == "function")
+          return J.JavaScriptFunction.prototype;
+        if (typeof receiver == "symbol")
+          return J.JavaScriptSymbol.prototype;
+        if (typeof receiver == "bigint")
+          return J.JavaScriptBigInt.prototype;
+        return receiver;
+      }
+      if (receiver instanceof A.Object)
+        return receiver;
+      return J.getNativeInterceptor(receiver);
     },
-    get$length$as(receiver) {
-      return J.getInterceptor$as(receiver).get$length(receiver);
+    getInterceptor$ax(receiver) {
+      if (receiver == null)
+        return receiver;
+      if (Array.isArray(receiver))
+        return J.JSArray.prototype;
+      if (typeof receiver != "object") {
+        if (typeof receiver == "function")
+          return J.JavaScriptFunction.prototype;
+        if (typeof receiver == "symbol")
+          return J.JavaScriptSymbol.prototype;
+        if (typeof receiver == "bigint")
+          return J.JavaScriptBigInt.prototype;
+        return receiver;
+      }
+      if (receiver instanceof A.Object)
+        return receiver;
+      return J.getNativeInterceptor(receiver);
+    },
+    get$iterator$ax(receiver) {
+      return J.getInterceptor$ax(receiver).get$iterator(receiver);
+    },
+    get$length$asx(receiver) {
+      return J.getInterceptor$asx(receiver).get$length(receiver);
     },
     get$runtimeType$(receiver) {
       return J.getInterceptor$(receiver).get$runtimeType(receiver);
+    },
+    elementAt$1$ax(receiver, a0) {
+      return J.getInterceptor$ax(receiver).elementAt$1(receiver, a0);
     },
     toString$0$(receiver) {
       return J.getInterceptor$(receiver).toString$0(receiver);
@@ -301,6 +510,18 @@
     JSNull: function JSNull() {
     },
     JavaScriptObject: function JavaScriptObject() {
+    },
+    LegacyJavaScriptObject: function LegacyJavaScriptObject() {
+    },
+    PlainJavaScriptObject: function PlainJavaScriptObject() {
+    },
+    UnknownJavaScriptObject: function UnknownJavaScriptObject() {
+    },
+    JavaScriptFunction: function JavaScriptFunction() {
+    },
+    JavaScriptBigInt: function JavaScriptBigInt() {
+    },
+    JavaScriptSymbol: function JavaScriptSymbol() {
     },
     JSArray: function JSArray(t0) {
       this.$ti = t0;
@@ -337,11 +558,39 @@
     LateError: function LateError(t0) {
       this._message = t0;
     },
+    EfficientLengthIterable: function EfficientLengthIterable() {
+    },
+    ListIterable: function ListIterable() {
+    },
+    ListIterator: function ListIterator(t0, t1, t2) {
+      var _ = this;
+      _.__internal$_iterable = t0;
+      _.__internal$_length = t1;
+      _.__internal$_index = 0;
+      _.__internal$_current = null;
+      _.$ti = t2;
+    },
+    MappedListIterable: function MappedListIterable(t0, t1, t2) {
+      this._source = t0;
+      this._f = t1;
+      this.$ti = t2;
+    },
+    FixedLengthListMixin: function FixedLengthListMixin() {
+    },
     unminifyOrTag(rawClassName) {
       var preserved = init.mangledGlobalNames[rawClassName];
       if (preserved != null)
         return preserved;
       return rawClassName;
+    },
+    isJsIndexable(object, record) {
+      var result;
+      if (record != null) {
+        result = record.x;
+        if (result != null)
+          return result;
+      }
+      return type$.JavaScriptIndexingBehavior_dynamic._is(object);
     },
     S(value) {
       var result;
@@ -367,7 +616,7 @@
       if (object instanceof A.Object)
         return A._rtiToString(A.instanceType(object), null);
       interceptor = J.getInterceptor$(object);
-      if (interceptor === B.Interceptor_methods || interceptor === B.JavaScriptObject_methods || false) {
+      if (interceptor === B.Interceptor_methods || interceptor === B.JavaScriptObject_methods || type$.UnknownJavaScriptObject._is(object)) {
         dispatchName = B.C_JS_CONST(object);
         if (dispatchName !== "Object" && dispatchName !== "")
           return dispatchName;
@@ -391,17 +640,17 @@
     },
     ioore(receiver, index) {
       if (receiver == null)
-        J.get$length$as(receiver);
+        J.get$length$asx(receiver);
       throw A.wrapException(A.diagnoseIndexError(receiver, index));
     },
     diagnoseIndexError(indexable, index) {
       var $length, _s5_ = "index";
       if (!A._isInt(index))
         return new A.ArgumentError(true, index, _s5_, null);
-      $length = J.get$length$as(indexable);
+      $length = J.get$length$asx(indexable);
       if (index < 0 || index >= $length)
-        return new A.IndexError($length, true, index, _s5_, "Index out of range");
-      return new A.RangeError(true, index, _s5_, "Value not in range");
+        return A.IndexError$withLength(index, $length, indexable, _s5_);
+      return new A.RangeError(null, null, true, index, _s5_, "Value not in range");
     },
     wrapException(ex) {
       return A.initializeExceptionWrapper(new Error(), ex);
@@ -429,7 +678,7 @@
       throw A.initializeExceptionWrapper(wrapper, ex);
     },
     throwConcurrentModificationError(collection) {
-      throw A.wrapException(new A.ConcurrentModificationError(collection));
+      throw A.wrapException(A.ConcurrentModificationError$(collection));
     },
     Closure_fromTearOff(parameters) {
       var $prototype, $constructor, t2, trampoline, applyTrampoline, i, stub, stub0, stubName, stubCallName,
@@ -628,20 +877,159 @@
       return closure._interceptor;
     },
     BoundClosure__computeFieldNamed(fieldName) {
-      var names, i, $name,
+      var t1, i, $name,
         template = new A.BoundClosure("receiver", "interceptor"),
-        t1 = Object.getOwnPropertyNames(template);
-      t1.fixed$length = Array;
-      names = t1;
+        names = J.JSArray_markFixedList(Object.getOwnPropertyNames(template), type$.nullable_Object);
       for (t1 = names.length, i = 0; i < t1; ++i) {
         $name = names[i];
         if (template[$name] === fieldName)
           return $name;
       }
-      throw A.wrapException(new A.ArgumentError(false, null, null, "Field name " + fieldName + " not found."));
+      throw A.wrapException(A.ArgumentError$("Field name " + fieldName + " not found."));
     },
     throwCyclicInit(staticName) {
       throw A.wrapException(new A._CyclicInitializationError(staticName));
+    },
+    getIsolateAffinityTag($name) {
+      return init.getIsolateTag($name);
+    },
+    lookupAndCacheInterceptor(obj) {
+      var interceptor, interceptorClass, altTag, mark, t1,
+        tag = A._asString($.getTagFunction.call$1(obj)),
+        record = $.dispatchRecordsForInstanceTags[tag];
+      if (record != null) {
+        Object.defineProperty(obj, init.dispatchPropertyName, {value: record, enumerable: false, writable: true, configurable: true});
+        return record.i;
+      }
+      interceptor = $.interceptorsForUncacheableTags[tag];
+      if (interceptor != null)
+        return interceptor;
+      interceptorClass = init.interceptorsByTag[tag];
+      if (interceptorClass == null) {
+        altTag = A._asStringQ($.alternateTagFunction.call$2(obj, tag));
+        if (altTag != null) {
+          record = $.dispatchRecordsForInstanceTags[altTag];
+          if (record != null) {
+            Object.defineProperty(obj, init.dispatchPropertyName, {value: record, enumerable: false, writable: true, configurable: true});
+            return record.i;
+          }
+          interceptor = $.interceptorsForUncacheableTags[altTag];
+          if (interceptor != null)
+            return interceptor;
+          interceptorClass = init.interceptorsByTag[altTag];
+          tag = altTag;
+        }
+      }
+      if (interceptorClass == null)
+        return null;
+      interceptor = interceptorClass.prototype;
+      mark = tag[0];
+      if (mark === "!") {
+        record = A.makeLeafDispatchRecord(interceptor);
+        $.dispatchRecordsForInstanceTags[tag] = record;
+        Object.defineProperty(obj, init.dispatchPropertyName, {value: record, enumerable: false, writable: true, configurable: true});
+        return record.i;
+      }
+      if (mark === "~") {
+        $.interceptorsForUncacheableTags[tag] = interceptor;
+        return interceptor;
+      }
+      if (mark === "-") {
+        t1 = A.makeLeafDispatchRecord(interceptor);
+        Object.defineProperty(Object.getPrototypeOf(obj), init.dispatchPropertyName, {value: t1, enumerable: false, writable: true, configurable: true});
+        return t1.i;
+      }
+      if (mark === "+")
+        return A.patchInteriorProto(obj, interceptor);
+      if (mark === "*")
+        throw A.wrapException(A.UnimplementedError$(tag));
+      if (init.leafTags[tag] === true) {
+        t1 = A.makeLeafDispatchRecord(interceptor);
+        Object.defineProperty(Object.getPrototypeOf(obj), init.dispatchPropertyName, {value: t1, enumerable: false, writable: true, configurable: true});
+        return t1.i;
+      } else
+        return A.patchInteriorProto(obj, interceptor);
+    },
+    patchInteriorProto(obj, interceptor) {
+      var proto = Object.getPrototypeOf(obj);
+      Object.defineProperty(proto, init.dispatchPropertyName, {value: J.makeDispatchRecord(interceptor, proto, null, null), enumerable: false, writable: true, configurable: true});
+      return interceptor;
+    },
+    makeLeafDispatchRecord(interceptor) {
+      return J.makeDispatchRecord(interceptor, false, null, !!interceptor.$isJavaScriptIndexingBehavior);
+    },
+    makeDefaultDispatchRecord(tag, interceptorClass, proto) {
+      var interceptor = interceptorClass.prototype;
+      if (init.leafTags[tag] === true)
+        return A.makeLeafDispatchRecord(interceptor);
+      else
+        return J.makeDispatchRecord(interceptor, proto, null, null);
+    },
+    initNativeDispatch() {
+      if (true === $.initNativeDispatchFlag)
+        return;
+      $.initNativeDispatchFlag = true;
+      A.initNativeDispatchContinue();
+    },
+    initNativeDispatchContinue() {
+      var map, tags, fun, i, tag, proto, record, interceptorClass;
+      $.dispatchRecordsForInstanceTags = Object.create(null);
+      $.interceptorsForUncacheableTags = Object.create(null);
+      A.initHooks();
+      map = init.interceptorsByTag;
+      tags = Object.getOwnPropertyNames(map);
+      if (typeof window != "undefined") {
+        window;
+        fun = function() {
+        };
+        for (i = 0; i < tags.length; ++i) {
+          tag = tags[i];
+          proto = $.prototypeForTagFunction.call$1(tag);
+          if (proto != null) {
+            record = A.makeDefaultDispatchRecord(tag, map[tag], proto);
+            if (record != null) {
+              Object.defineProperty(proto, init.dispatchPropertyName, {value: record, enumerable: false, writable: true, configurable: true});
+              fun.prototype = proto;
+            }
+          }
+        }
+      }
+      for (i = 0; i < tags.length; ++i) {
+        tag = tags[i];
+        if (/^[A-Za-z_]/.test(tag)) {
+          interceptorClass = map[tag];
+          map["!" + tag] = interceptorClass;
+          map["~" + tag] = interceptorClass;
+          map["-" + tag] = interceptorClass;
+          map["+" + tag] = interceptorClass;
+          map["*" + tag] = interceptorClass;
+        }
+      }
+    },
+    initHooks() {
+      var transformers, i, transformer, getTag, getUnknownTag, prototypeForTag,
+        hooks = B.C_JS_CONST0();
+      hooks = A.applyHooksTransformer(B.C_JS_CONST1, A.applyHooksTransformer(B.C_JS_CONST2, A.applyHooksTransformer(B.C_JS_CONST3, A.applyHooksTransformer(B.C_JS_CONST3, A.applyHooksTransformer(B.C_JS_CONST4, A.applyHooksTransformer(B.C_JS_CONST5, A.applyHooksTransformer(B.C_JS_CONST6(B.C_JS_CONST), hooks)))))));
+      if (typeof dartNativeDispatchHooksTransformer != "undefined") {
+        transformers = dartNativeDispatchHooksTransformer;
+        if (typeof transformers == "function")
+          transformers = [transformers];
+        if (Array.isArray(transformers))
+          for (i = 0; i < transformers.length; ++i) {
+            transformer = transformers[i];
+            if (typeof transformer == "function")
+              hooks = transformer(hooks) || hooks;
+          }
+      }
+      getTag = hooks.getTag;
+      getUnknownTag = hooks.getUnknownTag;
+      prototypeForTag = hooks.prototypeForTag;
+      $.getTagFunction = new A.initHooks_closure(getTag);
+      $.alternateTagFunction = new A.initHooks_closure0(getUnknownTag);
+      $.prototypeForTagFunction = new A.initHooks_closure1(prototypeForTag);
+    },
+    applyHooksTransformer(transformer, hooks) {
+      return transformer(hooks) || hooks;
     },
     createRecordTypePredicate(shape, fieldRtis) {
       var $length = fieldRtis.length,
@@ -656,6 +1044,8 @@
     },
     Closure: function Closure() {
     },
+    Closure2Args: function Closure2Args() {
+    },
     TearOffClosure: function TearOffClosure() {
     },
     StaticClosure: function StaticClosure() {
@@ -669,6 +1059,57 @@
     },
     RuntimeError: function RuntimeError(t0) {
       this.message = t0;
+    },
+    initHooks_closure: function initHooks_closure(t0) {
+      this.getTag = t0;
+    },
+    initHooks_closure0: function initHooks_closure0(t0) {
+      this.getUnknownTag = t0;
+    },
+    initHooks_closure1: function initHooks_closure1(t0) {
+      this.prototypeForTag = t0;
+    },
+    _checkValidIndex(index, list, $length) {
+      if (index >>> 0 !== index || index >= $length)
+        throw A.wrapException(A.diagnoseIndexError(list, index));
+    },
+    NativeByteBuffer: function NativeByteBuffer() {
+    },
+    NativeTypedData: function NativeTypedData() {
+    },
+    NativeByteData: function NativeByteData() {
+    },
+    NativeTypedArray: function NativeTypedArray() {
+    },
+    NativeTypedArrayOfDouble: function NativeTypedArrayOfDouble() {
+    },
+    NativeTypedArrayOfInt: function NativeTypedArrayOfInt() {
+    },
+    NativeFloat32List: function NativeFloat32List() {
+    },
+    NativeFloat64List: function NativeFloat64List() {
+    },
+    NativeInt16List: function NativeInt16List() {
+    },
+    NativeInt32List: function NativeInt32List() {
+    },
+    NativeInt8List: function NativeInt8List() {
+    },
+    NativeUint16List: function NativeUint16List() {
+    },
+    NativeUint32List: function NativeUint32List() {
+    },
+    NativeUint8ClampedList: function NativeUint8ClampedList() {
+    },
+    NativeUint8List: function NativeUint8List() {
+    },
+    _NativeTypedArrayOfDouble_NativeTypedArray_ListMixin: function _NativeTypedArrayOfDouble_NativeTypedArray_ListMixin() {
+    },
+    _NativeTypedArrayOfDouble_NativeTypedArray_ListMixin_FixedLengthListMixin: function _NativeTypedArrayOfDouble_NativeTypedArray_ListMixin_FixedLengthListMixin() {
+    },
+    _NativeTypedArrayOfInt_NativeTypedArray_ListMixin: function _NativeTypedArrayOfInt_NativeTypedArray_ListMixin() {
+    },
+    _NativeTypedArrayOfInt_NativeTypedArray_ListMixin_FixedLengthListMixin: function _NativeTypedArrayOfInt_NativeTypedArray_ListMixin_FixedLengthListMixin() {
     },
     Rti__getQuestionFromStar(universe, rti) {
       var question = rti._precomputed1;
@@ -905,6 +1346,9 @@
       starErasedRti = A._Universe_eval(init.typeUniverse, starErasedRecipe, true);
       t1 = starErasedRti._cachedRuntimeType;
       return t1 == null ? starErasedRti._cachedRuntimeType = A._createRuntimeType(starErasedRti) : t1;
+    },
+    typeLiteral(recipe) {
+      return A.createRuntimeType(A._Universe_eval(init.typeUniverse, recipe, false));
     },
     _installSpecializedIsTest(object) {
       var t1, unstarred, unstarredKind, isFn, $name, predicate, testRti = this;
@@ -2256,25 +2700,20 @@
     _TypeError: function _TypeError(t0) {
       this.__rti$_message = t0;
     },
+    ListBase: function ListBase() {
+    },
     StringBuffer__writeAll(string, objects, separator) {
-      var t2,
-        t1 = A._arrayInstanceType(objects),
-        iterator = new J.ArrayIterator(objects, objects.length, t1._eval$1("ArrayIterator<1>"));
+      var iterator = J.get$iterator$ax(objects);
       if (!iterator.moveNext$0())
         return string;
       if (separator.length === 0) {
-        t1 = t1._precomputed1;
-        do {
-          t2 = iterator._current;
-          string += A.S(t2 == null ? t1._as(t2) : t2);
-        } while (iterator.moveNext$0());
+        do
+          string += A.S(iterator.get$current());
+        while (iterator.moveNext$0());
       } else {
-        t2 = iterator._current;
-        string += A.S(t2 == null ? t1._precomputed1._as(t2) : t2);
-        for (t1 = t1._precomputed1; iterator.moveNext$0();) {
-          t2 = iterator._current;
-          string = string + separator + A.S(t2 == null ? t1._as(t2) : t2);
-        }
+        string += A.S(iterator.get$current());
+        for (; iterator.moveNext$0();)
+          string = string + separator + A.S(iterator.get$current());
       }
       return string;
     },
@@ -2288,8 +2727,39 @@
     AssertionError$(message) {
       return new A.AssertionError(message);
     },
+    ArgumentError$(message) {
+      return new A.ArgumentError(false, null, null, message);
+    },
+    IndexError$withLength(invalidValue, $length, indexable, $name) {
+      return new A.IndexError($length, true, invalidValue, $name, "Index out of range");
+    },
     UnsupportedError$(message) {
       return new A.UnsupportedError(message);
+    },
+    UnimplementedError$(message) {
+      return new A.UnimplementedError(message);
+    },
+    ConcurrentModificationError$(modifiedObject) {
+      return new A.ConcurrentModificationError(modifiedObject);
+    },
+    Iterable_iterableToShortString(iterable, leftDelimiter, rightDelimiter) {
+      var parts, t1;
+      if (A.isToStringVisiting(iterable)) {
+        if (leftDelimiter === "(" && rightDelimiter === ")")
+          return "(...)";
+        return leftDelimiter + "..." + rightDelimiter;
+      }
+      parts = A._setArrayType([], type$.JSArray_String);
+      B.JSArray_methods.add$1($.toStringVisiting, iterable);
+      try {
+        A._iterablePartsToStrings(iterable, parts);
+      } finally {
+        if (0 >= $.toStringVisiting.length)
+          return A.ioore($.toStringVisiting, -1);
+        $.toStringVisiting.pop();
+      }
+      t1 = A.StringBuffer__writeAll(leftDelimiter, type$.Iterable_dynamic._as(parts), ", ") + rightDelimiter;
+      return t1.charCodeAt(0) == 0 ? t1 : t1;
     },
     Iterable_iterableToFullString(iterable, leftDelimiter, rightDelimiter) {
       var buffer, t1;
@@ -2309,6 +2779,97 @@
       t1 = buffer._contents;
       return t1.charCodeAt(0) == 0 ? t1 : t1;
     },
+    _iterablePartsToStrings(iterable, parts) {
+      var $length, count, t2, next, ultimateString, penultimateString, penultimate, ultimate, ultimate0, elision,
+        t1 = iterable.$ti,
+        it = new A.ListIterator(iterable, iterable.get$length(0), t1._eval$1("ListIterator<ListIterable.E>"));
+      t1 = t1._eval$1("ListIterable.E");
+      $length = 0;
+      count = 0;
+      while (true) {
+        if (!($length < 80 || count < 3))
+          break;
+        if (!it.moveNext$0())
+          return;
+        t2 = it.__internal$_current;
+        next = A.S(t2 == null ? t1._as(t2) : t2);
+        B.JSArray_methods.add$1(parts, next);
+        $length += next.length + 2;
+        ++count;
+      }
+      if (!it.moveNext$0()) {
+        if (count <= 5)
+          return;
+        if (0 >= parts.length)
+          return A.ioore(parts, -1);
+        ultimateString = parts.pop();
+        if (0 >= parts.length)
+          return A.ioore(parts, -1);
+        penultimateString = parts.pop();
+      } else {
+        penultimate = it.__internal$_current;
+        if (penultimate == null)
+          penultimate = t1._as(penultimate);
+        ++count;
+        if (!it.moveNext$0()) {
+          if (count <= 4) {
+            B.JSArray_methods.add$1(parts, A.S(penultimate));
+            return;
+          }
+          ultimateString = A.S(penultimate);
+          if (0 >= parts.length)
+            return A.ioore(parts, -1);
+          penultimateString = parts.pop();
+          $length += ultimateString.length + 2;
+        } else {
+          ultimate = it.__internal$_current;
+          if (ultimate == null)
+            ultimate = t1._as(ultimate);
+          ++count;
+          for (; it.moveNext$0(); penultimate = ultimate, ultimate = ultimate0) {
+            ultimate0 = it.__internal$_current;
+            if (ultimate0 == null)
+              ultimate0 = t1._as(ultimate0);
+            ++count;
+            if (count > 100) {
+              while (true) {
+                if (!($length > 75 && count > 3))
+                  break;
+                if (0 >= parts.length)
+                  return A.ioore(parts, -1);
+                $length -= parts.pop().length + 2;
+                --count;
+              }
+              B.JSArray_methods.add$1(parts, "...");
+              return;
+            }
+          }
+          penultimateString = A.S(penultimate);
+          ultimateString = A.S(ultimate);
+          $length += ultimateString.length + penultimateString.length + 4;
+        }
+      }
+      if (count > parts.length + 2) {
+        $length += 5;
+        elision = "...";
+      } else
+        elision = null;
+      while (true) {
+        if (!($length > 80 && parts.length > 3))
+          break;
+        if (0 >= parts.length)
+          return A.ioore(parts, -1);
+        $length -= parts.pop().length + 2;
+        if (elision == null) {
+          $length += 5;
+          elision = "...";
+        }
+      }
+      if (elision != null)
+        B.JSArray_methods.add$1(parts, elision);
+      B.JSArray_methods.add$1(parts, penultimateString);
+      B.JSArray_methods.add$1(parts, ultimateString);
+    },
     Error: function Error() {
     },
     AssertionError: function AssertionError(t0) {
@@ -2323,12 +2884,14 @@
       _.name = t2;
       _.message = t3;
     },
-    RangeError: function RangeError(t0, t1, t2, t3) {
+    RangeError: function RangeError(t0, t1, t2, t3, t4, t5) {
       var _ = this;
-      _._hasValue = t0;
-      _.invalidValue = t1;
-      _.name = t2;
-      _.message = t3;
+      _.start = t0;
+      _.end = t1;
+      _._hasValue = t2;
+      _.invalidValue = t3;
+      _.name = t4;
+      _.message = t5;
     },
     IndexError: function IndexError(t0, t1, t2, t3, t4) {
       var _ = this;
@@ -2341,8 +2904,13 @@
     UnsupportedError: function UnsupportedError(t0) {
       this.message = t0;
     },
+    UnimplementedError: function UnimplementedError(t0) {
+      this.message = t0;
+    },
     ConcurrentModificationError: function ConcurrentModificationError(t0) {
       this.modifiedObject = t0;
+    },
+    Iterable: function Iterable() {
     },
     Null: function Null() {
     },
@@ -2350,6 +2918,11 @@
     },
     StringBuffer: function StringBuffer(t0) {
       this._contents = t0;
+    },
+    getPreamble() {
+      return 'var dartNodeIsActuallyNode = typeof process !== "undefined" && (process.versions || {}).hasOwnProperty(\'node\');\n\n// make sure to keep this as \'var\'\n// we don\'t want block scoping\nvar self = dartNodeIsActuallyNode ? Object.create(globalThis) : globalThis;\n\nself.scheduleImmediate = typeof setImmediate !== "undefined"\n    ? function (cb) {\n        setImmediate(cb);\n      }\n    : function(cb) {\n        setTimeout(cb, 0);\n      };\n\n// CommonJS globals.\nif (typeof require !== "undefined") {\n  self.require = require;\n}\nif (typeof exports !== "undefined") {\n  self.exports = exports;\n}\n\n// Node.js specific exports, check to see if they exist & or polyfilled\n\nif (typeof process !== "undefined") {\n  self.process = process;\n}\n\nif (typeof __dirname !== "undefined") {\n  self.__dirname = __dirname;\n}\n\nif (typeof __filename !== "undefined") {\n  self.__filename = __filename;\n}\n\nif (typeof Buffer !== "undefined") {\n  self.Buffer = Buffer;\n}\n\n// if we\'re running in a browser, Dart supports most of this out of box\n// make sure we only run these in Node.js environment\n\nif (dartNodeIsActuallyNode) {\n  // This line is to:\n  // 1) Prevent Webpack from bundling.\n  // 2) In Webpack on Node.js, make sure we\'re using the native Node.js require, which is available via __non_webpack_require__\n  // https://github.com/mbullington/node_preamble.dart/issues/18#issuecomment-527305561\n  var url = ("undefined" !== typeof __webpack_require__ ? __non_webpack_require__ : require)("url");\n\n  // Setting `self.location=` in Electron throws a `TypeError`, so we define it\n  // as a property instead to be safe.\n  Object.defineProperty(self, "location", {\n    value: {\n      get href() {\n        if (url.pathToFileURL) {\n          return url.pathToFileURL(process.cwd()).href + "/";\n        } else {\n          // This isn\'t really a correct transformation, but it\'s the best we have\n          // for versions of Node <10.12.0 which introduced `url.pathToFileURL()`.\n          // For example, it will fail for paths that contain characters that need\n          // to be escaped in URLs.\n          return "file://" + (function() {\n            var cwd = process.cwd();\n            if (process.platform != "win32") return cwd;\n            return "/" + cwd.replace(/\\\\/g, "/");\n          })() + "/"\n        }\n      }\n    }\n  });\n\n  (function() {\n    function computeCurrentScript() {\n      try {\n        throw new Error();\n      } catch(e) {\n        var stack = e.stack;\n        var re = new RegExp("^ *at [^(]*\\\\((.*):[0-9]*:[0-9]*\\\\)$", "mg");\n        var lastMatch = null;\n        do {\n          var match = re.exec(stack);\n          if (match != null) lastMatch = match;\n        } while (match != null);\n        return lastMatch[1];\n      }\n    }\n\n    // Setting `self.document=` isn\'t known to throw an error anywhere like\n    // `self.location=` does on Electron, but it\'s better to be future-proof\n    // just in case..\n    var cachedCurrentScript = null;\n    Object.defineProperty(self, "document", {\n      value: {\n        get currentScript() {\n          if (cachedCurrentScript == null) {\n            cachedCurrentScript = {src: computeCurrentScript()};\n          }\n          return cachedCurrentScript;\n        }\n      }\n    });\n  })();\n\n  self.dartDeferredLibraryLoader = function(uri, successCallback, errorCallback) {\n    try {\n     load(uri);\n      successCallback();\n    } catch (error) {\n      errorCallback(error);\n    }\n  };\n}\n' + new A.MappedListIterable(B.List_empty, type$.String_Function_String._as(new A.getPreamble_closure()), type$.MappedListIterable_String_String).join$0(0);
+    },
+    getPreamble_closure: function getPreamble_closure() {
     },
     printString(string) {
       if (typeof dartPrint == "function") {
@@ -2370,7 +2943,9 @@
       A.throwExpressionWithWrapper(new A.LateError("Field '" + fieldName + "' has been assigned during initialization."), new Error());
     },
     main() {
-      A.printString("Hello world!");
+      A.printString(A.getPreamble());
+      var t1 = type$.JSObject._as(self.console);
+      t1.log.apply(t1, ["Hello world!"]);
     }
   },
   B = {};
@@ -2401,7 +2976,32 @@
     },
     $isTrustedGetRuntimeType: 1
   };
-  J.JavaScriptObject.prototype = {};
+  J.JavaScriptObject.prototype = {$isJSObject: 1};
+  J.LegacyJavaScriptObject.prototype = {
+    toString$0(receiver) {
+      return String(receiver);
+    }
+  };
+  J.PlainJavaScriptObject.prototype = {};
+  J.UnknownJavaScriptObject.prototype = {};
+  J.JavaScriptFunction.prototype = {
+    toString$0(receiver) {
+      var dartClosure = receiver[$.$get$DART_CLOSURE_PROPERTY_NAME()];
+      if (dartClosure == null)
+        return this.super$LegacyJavaScriptObject$toString(receiver);
+      return "JavaScript function for " + J.toString$0$(dartClosure);
+    }
+  };
+  J.JavaScriptBigInt.prototype = {
+    toString$0(receiver) {
+      return String(receiver);
+    }
+  };
+  J.JavaScriptSymbol.prototype = {
+    toString$0(receiver) {
+      return String(receiver);
+    }
+  };
   J.JSArray.prototype = {
     add$1(receiver, value) {
       A._arrayInstanceType(receiver)._precomputed1._as(value);
@@ -2409,8 +3009,16 @@
         A.throwExpression(A.UnsupportedError$("add"));
       receiver.push(value);
     },
+    elementAt$1(receiver, index) {
+      if (!(index < receiver.length))
+        return A.ioore(receiver, index);
+      return receiver[index];
+    },
     toString$0(receiver) {
       return A.Iterable_iterableToFullString(receiver, "[", "]");
+    },
+    get$iterator(receiver) {
+      return new J.ArrayIterator(receiver, receiver.length, A._arrayInstanceType(receiver)._eval$1("ArrayIterator<1>"));
     },
     get$length(receiver) {
       return receiver.length;
@@ -2419,6 +3027,10 @@
   };
   J.JSUnmodifiableArray.prototype = {};
   J.ArrayIterator.prototype = {
+    get$current() {
+      var t1 = this._current;
+      return t1 == null ? this.$ti._precomputed1._as(t1) : t1;
+    },
     moveNext$0() {
       var t2, _this = this,
         t1 = _this._iterable,
@@ -2449,7 +3061,9 @@
     },
     get$runtimeType(receiver) {
       return A.createRuntimeType(type$.num);
-    }
+    },
+    $isdouble: 1,
+    $isnum: 1
   };
   J.JSInt.prototype = {
     get$runtimeType(receiver) {
@@ -2485,6 +3099,55 @@
       return "LateInitializationError: " + this._message;
     }
   };
+  A.EfficientLengthIterable.prototype = {};
+  A.ListIterable.prototype = {
+    join$0(_) {
+      var t3, i, t4,
+        t1 = this._source,
+        t2 = J.getInterceptor$asx(t1),
+        $length = t2.get$length(t1);
+      for (t3 = this._f, i = 0, t4 = ""; i < $length; ++i) {
+        t4 += A.S(t3.call$1(t2.elementAt$1(t1, i)));
+        if ($length !== t2.get$length(t1))
+          throw A.wrapException(A.ConcurrentModificationError$(this));
+      }
+      return t4.charCodeAt(0) == 0 ? t4 : t4;
+    }
+  };
+  A.ListIterator.prototype = {
+    get$current() {
+      var t1 = this.__internal$_current;
+      return t1 == null ? this.$ti._precomputed1._as(t1) : t1;
+    },
+    moveNext$0() {
+      var t3, _this = this,
+        t1 = _this.__internal$_iterable,
+        t2 = J.getInterceptor$asx(t1),
+        $length = t2.get$length(t1);
+      if (_this.__internal$_length !== $length)
+        throw A.wrapException(A.ConcurrentModificationError$(t1));
+      t3 = _this.__internal$_index;
+      if (t3 >= $length) {
+        _this.set$__internal$_current(null);
+        return false;
+      }
+      _this.set$__internal$_current(t2.elementAt$1(t1, t3));
+      ++_this.__internal$_index;
+      return true;
+    },
+    set$__internal$_current(_current) {
+      this.__internal$_current = this.$ti._eval$1("1?")._as(_current);
+    }
+  };
+  A.MappedListIterable.prototype = {
+    get$length(_) {
+      return J.get$length$asx(this._source);
+    },
+    elementAt$1(_, index) {
+      return this._f.call$1(J.elementAt$1$ax(this._source, index));
+    }
+  };
+  A.FixedLengthListMixin.prototype = {};
   A.Closure.prototype = {
     toString$0(_) {
       var $constructor = this.constructor,
@@ -2498,6 +3161,7 @@
     $requiredArgCount: 1,
     $defaultValues: null
   };
+  A.Closure2Args.prototype = {"call*": "call$2", $requiredArgCount: 2};
   A.TearOffClosure.prototype = {};
   A.StaticClosure.prototype = {
     toString$0(_) {
@@ -2522,6 +3186,143 @@
       return "RuntimeError: " + this.message;
     }
   };
+  A.initHooks_closure.prototype = {
+    call$1(o) {
+      return this.getTag(o);
+    },
+    $signature: 0
+  };
+  A.initHooks_closure0.prototype = {
+    call$2(o, tag) {
+      return this.getUnknownTag(o, tag);
+    },
+    $signature: 1
+  };
+  A.initHooks_closure1.prototype = {
+    call$1(tag) {
+      return this.prototypeForTag(A._asString(tag));
+    },
+    $signature: 2
+  };
+  A.NativeByteBuffer.prototype = {
+    get$runtimeType(receiver) {
+      return B.Type_ByteBuffer_RkP;
+    },
+    $isTrustedGetRuntimeType: 1
+  };
+  A.NativeTypedData.prototype = {};
+  A.NativeByteData.prototype = {
+    get$runtimeType(receiver) {
+      return B.Type_ByteData_zNC;
+    },
+    $isTrustedGetRuntimeType: 1
+  };
+  A.NativeTypedArray.prototype = {
+    get$length(receiver) {
+      return receiver.length;
+    },
+    $isJavaScriptIndexingBehavior: 1
+  };
+  A.NativeTypedArrayOfDouble.prototype = {
+    $index(receiver, index) {
+      A._checkValidIndex(index, receiver, receiver.length);
+      return receiver[index];
+    },
+    $isIterable: 1
+  };
+  A.NativeTypedArrayOfInt.prototype = {$isIterable: 1};
+  A.NativeFloat32List.prototype = {
+    get$runtimeType(receiver) {
+      return B.Type_Float32List_LB7;
+    },
+    $isTrustedGetRuntimeType: 1
+  };
+  A.NativeFloat64List.prototype = {
+    get$runtimeType(receiver) {
+      return B.Type_Float64List_LB7;
+    },
+    $isTrustedGetRuntimeType: 1
+  };
+  A.NativeInt16List.prototype = {
+    get$runtimeType(receiver) {
+      return B.Type_Int16List_uXf;
+    },
+    $index(receiver, index) {
+      A._checkValidIndex(index, receiver, receiver.length);
+      return receiver[index];
+    },
+    $isTrustedGetRuntimeType: 1
+  };
+  A.NativeInt32List.prototype = {
+    get$runtimeType(receiver) {
+      return B.Type_Int32List_O50;
+    },
+    $index(receiver, index) {
+      A._checkValidIndex(index, receiver, receiver.length);
+      return receiver[index];
+    },
+    $isTrustedGetRuntimeType: 1
+  };
+  A.NativeInt8List.prototype = {
+    get$runtimeType(receiver) {
+      return B.Type_Int8List_ekJ;
+    },
+    $index(receiver, index) {
+      A._checkValidIndex(index, receiver, receiver.length);
+      return receiver[index];
+    },
+    $isTrustedGetRuntimeType: 1
+  };
+  A.NativeUint16List.prototype = {
+    get$runtimeType(receiver) {
+      return B.Type_Uint16List_2bx;
+    },
+    $index(receiver, index) {
+      A._checkValidIndex(index, receiver, receiver.length);
+      return receiver[index];
+    },
+    $isTrustedGetRuntimeType: 1
+  };
+  A.NativeUint32List.prototype = {
+    get$runtimeType(receiver) {
+      return B.Type_Uint32List_2bx;
+    },
+    $index(receiver, index) {
+      A._checkValidIndex(index, receiver, receiver.length);
+      return receiver[index];
+    },
+    $isTrustedGetRuntimeType: 1
+  };
+  A.NativeUint8ClampedList.prototype = {
+    get$runtimeType(receiver) {
+      return B.Type_Uint8ClampedList_Jik;
+    },
+    get$length(receiver) {
+      return receiver.length;
+    },
+    $index(receiver, index) {
+      A._checkValidIndex(index, receiver, receiver.length);
+      return receiver[index];
+    },
+    $isTrustedGetRuntimeType: 1
+  };
+  A.NativeUint8List.prototype = {
+    get$runtimeType(receiver) {
+      return B.Type_Uint8List_WLA;
+    },
+    get$length(receiver) {
+      return receiver.length;
+    },
+    $index(receiver, index) {
+      A._checkValidIndex(index, receiver, receiver.length);
+      return receiver[index];
+    },
+    $isTrustedGetRuntimeType: 1
+  };
+  A._NativeTypedArrayOfDouble_NativeTypedArray_ListMixin.prototype = {};
+  A._NativeTypedArrayOfDouble_NativeTypedArray_ListMixin_FixedLengthListMixin.prototype = {};
+  A._NativeTypedArrayOfInt_NativeTypedArray_ListMixin.prototype = {};
+  A._NativeTypedArrayOfInt_NativeTypedArray_ListMixin_FixedLengthListMixin.prototype = {};
   A.Rti.prototype = {
     _eval$1(recipe) {
       return A._Universe_evalInEnvironment(init.typeUniverse, this, recipe);
@@ -2542,6 +3343,17 @@
     }
   };
   A._TypeError.prototype = {};
+  A.ListBase.prototype = {
+    get$iterator(receiver) {
+      return new A.ListIterator(receiver, this.get$length(receiver), A.instanceType(receiver)._eval$1("ListIterator<ListBase.E>"));
+    },
+    elementAt$1(receiver, index) {
+      return this.$index(receiver, index);
+    },
+    toString$0(receiver) {
+      return A.Iterable_iterableToFullString(receiver, "[", "]");
+    }
+  };
   A.Error.prototype = {};
   A.AssertionError.prototype = {
     toString$0(_) {
@@ -2582,7 +3394,18 @@
       return "RangeError";
     },
     get$_errorExplanation() {
-      return "";
+      var explanation,
+        start = this.start,
+        end = this.end;
+      if (start == null)
+        explanation = end != null ? ": Not less than or equal to " + A.S(end) : "";
+      else if (end == null)
+        explanation = ": Not greater than or equal to " + A.S(start);
+      else if (end > start)
+        explanation = ": Not in inclusive range " + A.S(start) + ".." + A.S(end);
+      else
+        explanation = end < start ? ": Valid value range is empty" : ": Only valid value is " + A.S(start);
+      return explanation;
     }
   };
   A.IndexError.prototype = {
@@ -2609,9 +3432,26 @@
       return "Unsupported operation: " + this.message;
     }
   };
+  A.UnimplementedError.prototype = {
+    toString$0(_) {
+      return "UnimplementedError: " + this.message;
+    }
+  };
   A.ConcurrentModificationError.prototype = {
     toString$0(_) {
       return "Concurrent modification during iteration: " + A.Error_safeToString(this.modifiedObject) + ".";
+    }
+  };
+  A.Iterable.prototype = {
+    get$length(_) {
+      var count,
+        it = new A.ListIterator(this, this.get$length(0), this.$ti._eval$1("ListIterator<ListIterable.E>"));
+      for (count = 0; it.moveNext$0();)
+        ++count;
+      return count;
+    },
+    toString$0(_) {
+      return A.Iterable_iterableToShortString(this, "(", ")");
     }
   };
   A.Null.prototype = {
@@ -2639,42 +3479,80 @@
       return t1.charCodeAt(0) == 0 ? t1 : t1;
     }
   };
+  A.getPreamble_closure.prototype = {
+    call$1(global) {
+      A._asString(global);
+      return "self." + global + "=" + global + ";";
+    },
+    $signature: 3
+  };
+  (function aliases() {
+    var _ = J.LegacyJavaScriptObject.prototype;
+    _.super$LegacyJavaScriptObject$toString = _.toString$0;
+  })();
   (function inheritance() {
-    var _inherit = hunkHelpers.inherit,
+    var _mixin = hunkHelpers.mixin,
+      _inherit = hunkHelpers.inherit,
       _inheritMany = hunkHelpers.inheritMany;
     _inherit(A.Object, null);
-    _inheritMany(A.Object, [A.JS_CONST, J.Interceptor, J.ArrayIterator, A.Error, A.Closure, A.Rti, A._FunctionParameters, A._Type, A.Null, A.StringBuffer]);
-    _inheritMany(J.Interceptor, [J.JSBool, J.JSNull, J.JavaScriptObject, J.JSNumber, J.JSString]);
-    _inherit(J.JSArray, J.JavaScriptObject);
+    _inheritMany(A.Object, [A.JS_CONST, J.Interceptor, J.ArrayIterator, A.Error, A.Iterable, A.ListIterator, A.FixedLengthListMixin, A.Closure, A.Rti, A._FunctionParameters, A._Type, A.ListBase, A.Null, A.StringBuffer]);
+    _inheritMany(J.Interceptor, [J.JSBool, J.JSNull, J.JavaScriptObject, J.JavaScriptBigInt, J.JavaScriptSymbol, J.JSNumber, J.JSString]);
+    _inheritMany(J.JavaScriptObject, [J.LegacyJavaScriptObject, J.JSArray, A.NativeByteBuffer, A.NativeTypedData]);
+    _inheritMany(J.LegacyJavaScriptObject, [J.PlainJavaScriptObject, J.UnknownJavaScriptObject, J.JavaScriptFunction]);
     _inherit(J.JSUnmodifiableArray, J.JSArray);
     _inheritMany(J.JSNumber, [J.JSInt, J.JSNumNotInt]);
-    _inheritMany(A.Error, [A.LateError, A._CyclicInitializationError, A.RuntimeError, A._Error, A.AssertionError, A.TypeError, A.ArgumentError, A.UnsupportedError, A.ConcurrentModificationError]);
-    _inherit(A.TearOffClosure, A.Closure);
+    _inheritMany(A.Error, [A.LateError, A._CyclicInitializationError, A.RuntimeError, A._Error, A.AssertionError, A.TypeError, A.ArgumentError, A.UnsupportedError, A.UnimplementedError, A.ConcurrentModificationError]);
+    _inherit(A.EfficientLengthIterable, A.Iterable);
+    _inherit(A.ListIterable, A.EfficientLengthIterable);
+    _inherit(A.MappedListIterable, A.ListIterable);
+    _inheritMany(A.Closure, [A.Closure2Args, A.TearOffClosure, A.initHooks_closure, A.initHooks_closure1, A.getPreamble_closure]);
     _inheritMany(A.TearOffClosure, [A.StaticClosure, A.BoundClosure]);
+    _inherit(A.initHooks_closure0, A.Closure2Args);
+    _inheritMany(A.NativeTypedData, [A.NativeByteData, A.NativeTypedArray]);
+    _inheritMany(A.NativeTypedArray, [A._NativeTypedArrayOfDouble_NativeTypedArray_ListMixin, A._NativeTypedArrayOfInt_NativeTypedArray_ListMixin]);
+    _inherit(A._NativeTypedArrayOfDouble_NativeTypedArray_ListMixin_FixedLengthListMixin, A._NativeTypedArrayOfDouble_NativeTypedArray_ListMixin);
+    _inherit(A.NativeTypedArrayOfDouble, A._NativeTypedArrayOfDouble_NativeTypedArray_ListMixin_FixedLengthListMixin);
+    _inherit(A._NativeTypedArrayOfInt_NativeTypedArray_ListMixin_FixedLengthListMixin, A._NativeTypedArrayOfInt_NativeTypedArray_ListMixin);
+    _inherit(A.NativeTypedArrayOfInt, A._NativeTypedArrayOfInt_NativeTypedArray_ListMixin_FixedLengthListMixin);
+    _inheritMany(A.NativeTypedArrayOfDouble, [A.NativeFloat32List, A.NativeFloat64List]);
+    _inheritMany(A.NativeTypedArrayOfInt, [A.NativeInt16List, A.NativeInt32List, A.NativeInt8List, A.NativeUint16List, A.NativeUint32List, A.NativeUint8ClampedList, A.NativeUint8List]);
     _inherit(A._TypeError, A._Error);
     _inheritMany(A.ArgumentError, [A.RangeError, A.IndexError]);
+    _mixin(A._NativeTypedArrayOfDouble_NativeTypedArray_ListMixin, A.ListBase);
+    _mixin(A._NativeTypedArrayOfDouble_NativeTypedArray_ListMixin_FixedLengthListMixin, A.FixedLengthListMixin);
+    _mixin(A._NativeTypedArrayOfInt_NativeTypedArray_ListMixin, A.ListBase);
+    _mixin(A._NativeTypedArrayOfInt_NativeTypedArray_ListMixin_FixedLengthListMixin, A.FixedLengthListMixin);
   })();
   var init = {
     typeUniverse: {eC: new Map(), tR: {}, eT: {}, tPV: {}, sEA: []},
     mangledGlobalNames: {int: "int", double: "double", num: "num", String: "String", bool: "bool", Null: "Null", List: "List", Object: "Object", Map: "Map"},
     mangledNames: {},
-    types: [],
+    types: ["@(@)", "@(@,String)", "@(String)", "String(String)"],
+    interceptorsByTag: null,
+    leafTags: null,
     arrayRti: Symbol("$ti")
   };
-  A._Universe_addRules(init.typeUniverse, JSON.parse('{"JSBool":{"bool":[],"TrustedGetRuntimeType":[]},"JSNull":{"TrustedGetRuntimeType":[]},"JSArray":{"Iterable":["1"]},"JSUnmodifiableArray":{"JSArray":["1"],"Iterable":["1"]},"JSInt":{"int":[],"TrustedGetRuntimeType":[]},"JSNumNotInt":{"TrustedGetRuntimeType":[]},"JSString":{"String":[],"TrustedGetRuntimeType":[]}}'));
+  A._Universe_addRules(init.typeUniverse, JSON.parse('{"PlainJavaScriptObject":"LegacyJavaScriptObject","UnknownJavaScriptObject":"LegacyJavaScriptObject","JavaScriptFunction":"LegacyJavaScriptObject","JSBool":{"bool":[],"TrustedGetRuntimeType":[]},"JSNull":{"TrustedGetRuntimeType":[]},"JavaScriptObject":{"JSObject":[]},"LegacyJavaScriptObject":{"JSObject":[]},"JSArray":{"JSObject":[],"Iterable":["1"]},"JSUnmodifiableArray":{"JSArray":["1"],"JSObject":[],"Iterable":["1"]},"JSNumber":{"double":[],"num":[]},"JSInt":{"double":[],"int":[],"num":[],"TrustedGetRuntimeType":[]},"JSNumNotInt":{"double":[],"num":[],"TrustedGetRuntimeType":[]},"JSString":{"String":[],"TrustedGetRuntimeType":[]},"EfficientLengthIterable":{"Iterable":["1"]},"ListIterable":{"Iterable":["1"]},"MappedListIterable":{"ListIterable":["2"],"Iterable":["2"],"ListIterable.E":"2"},"NativeByteBuffer":{"JSObject":[],"TrustedGetRuntimeType":[]},"NativeTypedData":{"JSObject":[]},"NativeByteData":{"JSObject":[],"TrustedGetRuntimeType":[]},"NativeTypedArray":{"JavaScriptIndexingBehavior":["1"],"JSObject":[]},"NativeTypedArrayOfDouble":{"ListBase":["double"],"JavaScriptIndexingBehavior":["double"],"JSObject":[],"Iterable":["double"],"FixedLengthListMixin":["double"]},"NativeTypedArrayOfInt":{"ListBase":["int"],"JavaScriptIndexingBehavior":["int"],"JSObject":[],"Iterable":["int"],"FixedLengthListMixin":["int"]},"NativeFloat32List":{"ListBase":["double"],"JavaScriptIndexingBehavior":["double"],"JSObject":[],"Iterable":["double"],"FixedLengthListMixin":["double"],"TrustedGetRuntimeType":[],"ListBase.E":"double"},"NativeFloat64List":{"ListBase":["double"],"JavaScriptIndexingBehavior":["double"],"JSObject":[],"Iterable":["double"],"FixedLengthListMixin":["double"],"TrustedGetRuntimeType":[],"ListBase.E":"double"},"NativeInt16List":{"ListBase":["int"],"JavaScriptIndexingBehavior":["int"],"JSObject":[],"Iterable":["int"],"FixedLengthListMixin":["int"],"TrustedGetRuntimeType":[],"ListBase.E":"int"},"NativeInt32List":{"ListBase":["int"],"JavaScriptIndexingBehavior":["int"],"JSObject":[],"Iterable":["int"],"FixedLengthListMixin":["int"],"TrustedGetRuntimeType":[],"ListBase.E":"int"},"NativeInt8List":{"ListBase":["int"],"JavaScriptIndexingBehavior":["int"],"JSObject":[],"Iterable":["int"],"FixedLengthListMixin":["int"],"TrustedGetRuntimeType":[],"ListBase.E":"int"},"NativeUint16List":{"ListBase":["int"],"JavaScriptIndexingBehavior":["int"],"JSObject":[],"Iterable":["int"],"FixedLengthListMixin":["int"],"TrustedGetRuntimeType":[],"ListBase.E":"int"},"NativeUint32List":{"ListBase":["int"],"JavaScriptIndexingBehavior":["int"],"JSObject":[],"Iterable":["int"],"FixedLengthListMixin":["int"],"TrustedGetRuntimeType":[],"ListBase.E":"int"},"NativeUint8ClampedList":{"ListBase":["int"],"JavaScriptIndexingBehavior":["int"],"JSObject":[],"Iterable":["int"],"FixedLengthListMixin":["int"],"TrustedGetRuntimeType":[],"ListBase.E":"int"},"NativeUint8List":{"ListBase":["int"],"JavaScriptIndexingBehavior":["int"],"JSObject":[],"Iterable":["int"],"FixedLengthListMixin":["int"],"TrustedGetRuntimeType":[],"ListBase.E":"int"},"double":{"num":[]},"int":{"num":[]},"Int8List":{"Iterable":["int"]},"Uint8List":{"Iterable":["int"]},"Uint8ClampedList":{"Iterable":["int"]},"Int16List":{"Iterable":["int"]},"Uint16List":{"Iterable":["int"]},"Int32List":{"Iterable":["int"]},"Uint32List":{"Iterable":["int"]},"Float32List":{"Iterable":["double"]},"Float64List":{"Iterable":["double"]}}'));
+  A._Universe_addErasedTypes(init.typeUniverse, JSON.parse('{"EfficientLengthIterable":1,"NativeTypedArray":1}'));
   var type$ = (function rtii() {
     var findType = A.findType;
     return {
       Function: findType("Function"),
+      Iterable_dynamic: findType("Iterable<@>"),
       JSArray_String: findType("JSArray<String>"),
       JSArray_dynamic: findType("JSArray<@>"),
       JSNull: findType("JSNull"),
+      JSObject: findType("JSObject"),
       JavaScriptFunction: findType("JavaScriptFunction"),
+      JavaScriptIndexingBehavior_dynamic: findType("JavaScriptIndexingBehavior<@>"),
+      MappedListIterable_String_String: findType("MappedListIterable<String,String>"),
       Null: findType("Null"),
       Object: findType("Object"),
       Record: findType("Record"),
       String: findType("String"),
+      String_Function_String: findType("String(String)"),
       TrustedGetRuntimeType: findType("TrustedGetRuntimeType"),
+      UnknownJavaScriptObject: findType("UnknownJavaScriptObject"),
       bool: findType("bool"),
       double: findType("double"),
       int: findType("int"),
@@ -2686,24 +3564,210 @@
     };
   })();
   (function constants() {
+    var makeConstList = hunkHelpers.makeConstList;
     B.Interceptor_methods = J.Interceptor.prototype;
     B.JSArray_methods = J.JSArray.prototype;
     B.JSString_methods = J.JSString.prototype;
+    B.JavaScriptFunction_methods = J.JavaScriptFunction.prototype;
     B.JavaScriptObject_methods = J.JavaScriptObject.prototype;
+    B.PlainJavaScriptObject_methods = J.PlainJavaScriptObject.prototype;
+    B.UnknownJavaScriptObject_methods = J.UnknownJavaScriptObject.prototype;
     B.C_JS_CONST = function getTagFallback(o) {
   var s = Object.prototype.toString.call(o);
   return s.substring(8, s.length - 1);
 };
+    B.C_JS_CONST0 = function() {
+  var toStringFunction = Object.prototype.toString;
+  function getTag(o) {
+    var s = toStringFunction.call(o);
+    return s.substring(8, s.length - 1);
+  }
+  function getUnknownTag(object, tag) {
+    if (/^HTML[A-Z].*Element$/.test(tag)) {
+      var name = toStringFunction.call(object);
+      if (name == "[object Object]") return null;
+      return "HTMLElement";
+    }
+  }
+  function getUnknownTagGenericBrowser(object, tag) {
+    if (object instanceof HTMLElement) return "HTMLElement";
+    return getUnknownTag(object, tag);
+  }
+  function prototypeForTag(tag) {
+    if (typeof window == "undefined") return null;
+    if (typeof window[tag] == "undefined") return null;
+    var constructor = window[tag];
+    if (typeof constructor != "function") return null;
+    return constructor.prototype;
+  }
+  function discriminator(tag) { return null; }
+  var isBrowser = typeof HTMLElement == "function";
+  return {
+    getTag: getTag,
+    getUnknownTag: isBrowser ? getUnknownTagGenericBrowser : getUnknownTag,
+    prototypeForTag: prototypeForTag,
+    discriminator: discriminator };
+};
+    B.C_JS_CONST6 = function(getTagFallback) {
+  return function(hooks) {
+    if (typeof navigator != "object") return hooks;
+    var userAgent = navigator.userAgent;
+    if (typeof userAgent != "string") return hooks;
+    if (userAgent.indexOf("DumpRenderTree") >= 0) return hooks;
+    if (userAgent.indexOf("Chrome") >= 0) {
+      function confirm(p) {
+        return typeof window == "object" && window[p] && window[p].name == p;
+      }
+      if (confirm("Window") && confirm("HTMLElement")) return hooks;
+    }
+    hooks.getTag = getTagFallback;
+  };
+};
+    B.C_JS_CONST1 = function(hooks) {
+  if (typeof dartExperimentalFixupGetTag != "function") return hooks;
+  hooks.getTag = dartExperimentalFixupGetTag(hooks.getTag);
+};
+    B.C_JS_CONST5 = function(hooks) {
+  if (typeof navigator != "object") return hooks;
+  var userAgent = navigator.userAgent;
+  if (typeof userAgent != "string") return hooks;
+  if (userAgent.indexOf("Firefox") == -1) return hooks;
+  var getTag = hooks.getTag;
+  var quickMap = {
+    "BeforeUnloadEvent": "Event",
+    "DataTransfer": "Clipboard",
+    "GeoGeolocation": "Geolocation",
+    "Location": "!Location",
+    "WorkerMessageEvent": "MessageEvent",
+    "XMLDocument": "!Document"};
+  function getTagFirefox(o) {
+    var tag = getTag(o);
+    return quickMap[tag] || tag;
+  }
+  hooks.getTag = getTagFirefox;
+};
+    B.C_JS_CONST4 = function(hooks) {
+  if (typeof navigator != "object") return hooks;
+  var userAgent = navigator.userAgent;
+  if (typeof userAgent != "string") return hooks;
+  if (userAgent.indexOf("Trident/") == -1) return hooks;
+  var getTag = hooks.getTag;
+  var quickMap = {
+    "BeforeUnloadEvent": "Event",
+    "DataTransfer": "Clipboard",
+    "HTMLDDElement": "HTMLElement",
+    "HTMLDTElement": "HTMLElement",
+    "HTMLPhraseElement": "HTMLElement",
+    "Position": "Geoposition"
+  };
+  function getTagIE(o) {
+    var tag = getTag(o);
+    var newTag = quickMap[tag];
+    if (newTag) return newTag;
+    if (tag == "Object") {
+      if (window.DataView && (o instanceof window.DataView)) return "DataView";
+    }
+    return tag;
+  }
+  function prototypeForTagIE(tag) {
+    var constructor = window[tag];
+    if (constructor == null) return null;
+    return constructor.prototype;
+  }
+  hooks.getTag = getTagIE;
+  hooks.prototypeForTag = prototypeForTagIE;
+};
+    B.C_JS_CONST2 = function(hooks) {
+  var getTag = hooks.getTag;
+  var prototypeForTag = hooks.prototypeForTag;
+  function getTagFixed(o) {
+    var tag = getTag(o);
+    if (tag == "Document") {
+      if (!!o.xmlVersion) return "!Document";
+      return "!HTMLDocument";
+    }
+    return tag;
+  }
+  function prototypeForTagFixed(tag) {
+    if (tag == "Document") return null;
+    return prototypeForTag(tag);
+  }
+  hooks.getTag = getTagFixed;
+  hooks.prototypeForTag = prototypeForTagFixed;
+};
+    B.C_JS_CONST3 = function(hooks) { return hooks; }
+;
+    B.List_empty = A._setArrayType(makeConstList([]), type$.JSArray_String);
+    B.Type_ByteBuffer_RkP = A.typeLiteral("ByteBuffer");
+    B.Type_ByteData_zNC = A.typeLiteral("ByteData");
+    B.Type_Float32List_LB7 = A.typeLiteral("Float32List");
+    B.Type_Float64List_LB7 = A.typeLiteral("Float64List");
+    B.Type_Int16List_uXf = A.typeLiteral("Int16List");
+    B.Type_Int32List_O50 = A.typeLiteral("Int32List");
+    B.Type_Int8List_ekJ = A.typeLiteral("Int8List");
+    B.Type_Uint16List_2bx = A.typeLiteral("Uint16List");
+    B.Type_Uint32List_2bx = A.typeLiteral("Uint32List");
+    B.Type_Uint8ClampedList_Jik = A.typeLiteral("Uint8ClampedList");
+    B.Type_Uint8List_WLA = A.typeLiteral("Uint8List");
   })();
   (function staticFields() {
+    $._JS_INTEROP_INTERCEPTOR_TAG = null;
     $.toStringVisiting = A._setArrayType([], A.findType("JSArray<Object>"));
     $.BoundClosure__receiverFieldNameCache = null;
     $.BoundClosure__interceptorFieldNameCache = null;
+    $.getTagFunction = null;
+    $.alternateTagFunction = null;
+    $.prototypeForTagFunction = null;
+    $.dispatchRecordsForInstanceTags = null;
+    $.interceptorsForUncacheableTags = null;
+    $.initNativeDispatchFlag = null;
+  })();
+  (function lazyInitializers() {
+    var _lazyFinal = hunkHelpers.lazyFinal;
+    _lazyFinal($, "DART_CLOSURE_PROPERTY_NAME", "$get$DART_CLOSURE_PROPERTY_NAME", () => A.getIsolateAffinityTag("_$dart_dartClosure"));
   })();
   (function nativeSupport() {
-    hunkHelpers.setOrUpdateInterceptorsByTag({});
-    hunkHelpers.setOrUpdateLeafTags({});
+    !function() {
+      var intern = function(s) {
+        var o = {};
+        o[s] = 1;
+        return Object.keys(hunkHelpers.convertToFastObject(o))[0];
+      };
+      init.getIsolateTag = function(name) {
+        return intern("___dart_" + name + init.isolateTag);
+      };
+      var tableProperty = "___dart_isolate_tags_";
+      var usedProperties = Object[tableProperty] || (Object[tableProperty] = Object.create(null));
+      var rootProperty = "_ZxYxX";
+      for (var i = 0;; i++) {
+        var property = intern(rootProperty + "_" + i + "_");
+        if (!(property in usedProperties)) {
+          usedProperties[property] = 1;
+          init.isolateTag = property;
+          break;
+        }
+      }
+      init.dispatchPropertyName = init.getIsolateTag("dispatch_record");
+    }();
+    hunkHelpers.setOrUpdateInterceptorsByTag({ArrayBuffer: A.NativeByteBuffer, ArrayBufferView: A.NativeTypedData, DataView: A.NativeByteData, Float32Array: A.NativeFloat32List, Float64Array: A.NativeFloat64List, Int16Array: A.NativeInt16List, Int32Array: A.NativeInt32List, Int8Array: A.NativeInt8List, Uint16Array: A.NativeUint16List, Uint32Array: A.NativeUint32List, Uint8ClampedArray: A.NativeUint8ClampedList, CanvasPixelArray: A.NativeUint8ClampedList, Uint8Array: A.NativeUint8List});
+    hunkHelpers.setOrUpdateLeafTags({ArrayBuffer: true, ArrayBufferView: false, DataView: true, Float32Array: true, Float64Array: true, Int16Array: true, Int32Array: true, Int8Array: true, Uint16Array: true, Uint32Array: true, Uint8ClampedArray: true, CanvasPixelArray: true, Uint8Array: false});
+    A.NativeTypedArray.$nativeSuperclassTag = "ArrayBufferView";
+    A._NativeTypedArrayOfDouble_NativeTypedArray_ListMixin.$nativeSuperclassTag = "ArrayBufferView";
+    A._NativeTypedArrayOfDouble_NativeTypedArray_ListMixin_FixedLengthListMixin.$nativeSuperclassTag = "ArrayBufferView";
+    A.NativeTypedArrayOfDouble.$nativeSuperclassTag = "ArrayBufferView";
+    A._NativeTypedArrayOfInt_NativeTypedArray_ListMixin.$nativeSuperclassTag = "ArrayBufferView";
+    A._NativeTypedArrayOfInt_NativeTypedArray_ListMixin_FixedLengthListMixin.$nativeSuperclassTag = "ArrayBufferView";
+    A.NativeTypedArrayOfInt.$nativeSuperclassTag = "ArrayBufferView";
   })();
+  Function.prototype.call$0 = function() {
+    return this();
+  };
+  Function.prototype.call$1 = function(a) {
+    return this(a);
+  };
+  Function.prototype.call$2 = function(a, b) {
+    return this(a, b);
+  };
   convertAllToFastObject(holders);
   convertToFastObject($);
   (function(callback) {
@@ -2736,4 +3800,4 @@
   });
 })();
 
-//# sourceMappingURL=hello_world.dart.js.map
+//# sourceMappingURL=console_interop.dart.js.map

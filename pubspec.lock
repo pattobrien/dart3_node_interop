@@ -314,7 +314,7 @@ packages:
     source: hosted
     version: "1.0.5"
   node_preamble:
-    dependency: transitive
+    dependency: "direct main"
     description:
       name: node_preamble
       sha256: "6e7eac89047ab8a8d26cf16127b5ed26de65209847630400f9aefd7cd5c730db"

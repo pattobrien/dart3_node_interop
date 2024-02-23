@@ -6,8 +6,9 @@ targets:
         generate_for:
           - bin/**.dart
         options:
-          {}
-          # compiler: dart2js
+          compiler: dart2js
           # # List any dart2js specific args here, or omit it.
-          # dart2js_args:
-          #   - -O2
+          dart2js_args:
+            []
+
+            # - -O2
