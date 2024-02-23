@@ -7,6 +7,7 @@ targets:
       - "bin/**"
       - "$package$"
       - "lib/$lib$"
+      - "lib/**"
     builders:
       build_web_compilers:entrypoint:
         # These are globs for the entrypoints you want to compile.
@@ -17,6 +18,6 @@ targets:
           compiler: dart2js
           # # List any dart2js specific args here, or omit it.
           dart2js_args:
-            # []
-            - -04
+            []
+            # - -04
             # - -O2

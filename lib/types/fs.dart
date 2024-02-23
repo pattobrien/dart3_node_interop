@@ -11,7 +11,7 @@ external void writeFileSync(
 ]);
 
 @JS()
-external JSArray readdirSync(
+external JSArray<JSString> readdirSync(
   JSAny path, [
   JSAny? options,
 ]);
