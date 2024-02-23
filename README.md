@@ -27,3 +27,4 @@ Compile dart program to js and run via `node build/foo.dart.js`.
 
 - [ ] see if preamble can be programatically added to existing `build_web_compilers`
 - [ ] can we get intellisense to work on generated code (possibly using `jsconfig.json`)?
+- [ ] can we build js type definitions from ts declaration files?
