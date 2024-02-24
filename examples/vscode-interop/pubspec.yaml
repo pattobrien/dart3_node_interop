@@ -1,15 +1,17 @@
 name: vscode_interop
 description: A sample command-line application.
 version: 1.0.0
-# repository: https://github.com/my_org/my_repo
+publish_to: none
 
 environment:
   sdk: ^3.3.0
 
-# Add regular dependencies here.
 dependencies:
-  # path: ^1.8.0
+  dart3_node_interop:
+    path: ../../
 
 dev_dependencies:
+  build_runner: ^2.4.8
+  build_web_compilers: ^4.0.9
   lints: ^3.0.0
   test: ^1.24.0
