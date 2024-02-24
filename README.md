@@ -57,3 +57,9 @@ Relevant:
 - https://github.com/dart-lang/sdk/issues/53783
 - https://github.com/dart-lang/sdk/issues/52852
 - deferred loading of a library - https://dart.dev/language/libraries#lazily-loading-a-library
+
+#### Required Preamble
+
+The generated dart code requires some [preamble](./build/node_preamble.js) in order to interop with `node.js` (e.g. adding `require` to the global scope for future import statements). 
+
+An [issue](https://github.com/dart-lang/build/issues/3652) has been opened against `buid_web_compilers` to allow custom premable scripts to be added to the compiler output.
