@@ -79,3 +79,9 @@ TODO: description
 see:
 - https://pub.dev/packages/chartjs - old js interop example
 - https://github.com/dart-archive/js_facade_gen - used to generate `chart.js` interop example
+
+#### Extension Types
+
+##### Module Declarations
+
+Module declarations (e.g. `declare module 'fs'`) currently require a top level extension type to encapsulate the declarations made within the module. See [fs](./lib/node/fs.dart) for reference.
