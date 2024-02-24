@@ -31,17 +31,12 @@ NOTE: For some reason, `webdev serve` isnt regenerating the js files on change, 
 - [ ] build Dart extension type definitions from ts declaration files
 - [ ] couldn't access `import.meta.url` (didn't try _everything_) - is there a reason that this would be needed in `node.js`
 
-### End-to-End validation tests
+### End-to-End use cases
+
+Some use cases to validate full functionality with.
 
 - [ ] VSCode extension interop
 - [ ] ReactJS interop
-
-### Conclusions
-
-#### NodeJS Hot Reload
-
-Dart hot reload cannot work together to hot reload NodeJS. Unlocking this feature would likely require interop with a JS reloader, e.g. Webpack HMR.
-
 
 ### Additional Notes
 
@@ -63,3 +58,7 @@ Relevant:
 The generated dart code requires some [preamble](./build/node_preamble.js) in order to interop with `node.js` (e.g. adding `require` to the global scope for future import statements). 
 
 An [issue](https://github.com/dart-lang/build/issues/3652) has been opened against `buid_web_compilers` to allow custom premable scripts to be added to the compiler output.
+
+#### NodeJS Hot Reload
+
+Dart hot reload cannot work together to hot reload NodeJS. Unlocking this feature would likely require interop with a JS reloader, e.g. Webpack HMR.
