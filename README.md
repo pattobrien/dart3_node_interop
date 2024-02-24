@@ -47,6 +47,12 @@ Dart currently doesn't have a way to declare modules that can automatically be i
 - only use static imports (e.g. `<script>` in `index.html`)
 - explicitly import a module using `js_interop.importModule('fs')`
 
+note: unsure why static imports cant be used, e.g:
+
+```js
+import { foo } from "foo";
+```
+
 Relevant:
 
 - https://github.com/dart-lang/sdk/issues/53783
@@ -59,6 +65,17 @@ The generated dart code requires some [preamble](./build/node_preamble.js) in or
 
 An [issue](https://github.com/dart-lang/build/issues/3652) has been opened against `buid_web_compilers` to allow custom premable scripts to be added to the compiler output.
 
+Note: digging around [build_modules](https://github.com/dart-lang/build/tree/master/build_modules) may give some insight on how to customize the build pipeline.
+
 #### NodeJS Hot Reload
 
 Dart hot reload cannot work together to hot reload NodeJS. Unlocking this feature would likely require interop with a JS reloader, e.g. Webpack HMR.
+
+
+#### Auto-generate Dart extension types
+
+TODO: description
+
+see:
+- https://pub.dev/packages/chartjs - old js interop example
+- https://github.com/dart-archive/js_facade_gen - used to generate `chart.js` interop example
