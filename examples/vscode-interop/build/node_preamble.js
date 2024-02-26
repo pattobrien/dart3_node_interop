@@ -15,19 +15,22 @@ self.scheduleImmediate = typeof setImmediate !== "undefined"
 
 // CommonJS globals.
 if (typeof require !== "undefined") {
+  // console.log('require is defined');
   self.require = require;
 }
 if (typeof exports !== "undefined") {
+  // console.log('exports is defined:', exports);
   self.exports = exports;
 }
-
 // Node.js specific exports, check to see if they exist & or polyfilled
 
 if (typeof process !== "undefined") {
+  // console.log('process is defined');
   self.process = process;
 }
 
 if (typeof __dirname !== "undefined") {
+  // console.log('__dirname is defined');
   self.__dirname = __dirname;
 }
 

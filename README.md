@@ -21,11 +21,14 @@ NOTE: For some reason, `webdev serve` isnt regenerating the js files on change, 
 - [x] create a JS interop type that represents the (built-in) console log
 - [x] verify platform agnostic type (e.g. `console`) can be run from browser.
 - [x] create a Node.JS interop type that only exists via an import (e.g. `fs`)
+- [ ] a callback Dart function that is able to be triggered via another script
+- [ ] use interop types from a npm package (e.g. `vscode`)
 - [ ] create a Browser JS interop type, and verify it doesn't work using node
 
 
 ### Enhancements
 
+- [ ] can we use the debugger (e.g. for setting breakpoints)? will breakpoints show on dart code, not the js code?
 - [ ] can the `node.js` preamble be programatically added to existing `build_web_compilers`? (see: https://github.com/dart-lang/build/tree/82889aea57247a32b327f4e51e5c42f4b70fb230/build_web_compilers#manual-usage)
 - [ ] can we get intellisense to work on generated code (possibly using `jsconfig.json`)? this would help debug issues at compile time, rather than run time
 - [ ] build Dart extension type definitions from ts declaration files
@@ -51,6 +54,12 @@ note: unsure why static imports cant be used, e.g:
 
 ```js
 import { foo } from "foo";
+```
+
+note: does the typical way of referencing a module via an alias affect the way developers need to declare extension types in Dart?
+
+```ts
+import * as vscode from 'vscode';
 ```
 
 Relevant:
@@ -79,6 +88,16 @@ TODO: description
 see:
 - https://pub.dev/packages/chartjs - old js interop example
 - https://github.com/dart-archive/js_facade_gen - used to generate `chart.js` interop example
+
+
+#### Module Support
+
+ESM vs CommonJS code generation.
+
+TODO: describe differences
+
+note:
+- vscode extensions only support CommonJS (will change soon) see: https://github.com/microsoft/vscode/issues/130367
 
 #### Extension Types
 
