@@ -1367,6 +1367,8 @@ require('../node_preamble');
     },
     Closure: function Closure() {
     },
+    Closure0Args: function Closure0Args() {
+    },
     Closure2Args: function Closure2Args() {
     },
     TearOffClosure: function TearOffClosure() {
@@ -5472,6 +5474,31 @@ require('../node_preamble');
     },
     _WebGL2RenderingContextBase: function _WebGL2RenderingContextBase() {
     },
+    main() {
+      var t1, moduleExports, t2;
+      A.print("DART - starting...");
+      A.print("DART - imported node_preamble.js");
+      t1 = type$.JSObject;
+      moduleExports = A.getProperty(A.staticInteropGlobalContext(), "exports", t1);
+      t2 = type$.void;
+      A._callMethodUnchecked1(A.getProperty(A.staticInteropGlobalContext(), "console", t1), "log", A.StringToJSString_get_toJS("DART - Module Exports:"), t2);
+      A._callMethodUnchecked1(A.getProperty(A.staticInteropGlobalContext(), "console", t1), "log", moduleExports, t2);
+      A.setProperty(moduleExports, "activate", A.FunctionToJSExportedDartFunction_get_toJS(A.allowInterop(A.extension__activateImplementation$closure(), type$.void_Function_JSObject)), type$.JavaScriptFunction);
+      A.print("Completed!");
+      module.exports = self.exports;
+    },
+    activateImplementation(context) {
+      var t2, disposable,
+        _s8_ = "commands",
+        t1 = type$.JSObject;
+      t1._as(context);
+      A.print('Congratulations, your extension "vscode_interop" is now active!');
+      t2 = type$.Object;
+      disposable = A._callMethodUnchecked2(A._getPropertyTrustType(A._getPropertyTrustType(A.staticInteropGlobalContext(), _s8_, t2), _s8_, t2), "registerCommand", "vscode-interop.helloWorld", A.FunctionToJSExportedDartFunction_get_toJS(new A.activateImplementation_closure()), t1);
+      A._callMethodUnchecked1(A.getProperty(context, "subscriptions", type$.JSArray_nullable_Object), "push", disposable, type$.void);
+    },
+    activateImplementation_closure: function activateImplementation_closure() {
+    },
     throwLateFieldADI(fieldName) {
       var wrapper = new Error();
       A.throwExpressionWithWrapper(A.LateError$fieldADI(fieldName), wrapper);
@@ -5569,12 +5596,18 @@ require('../node_preamble');
     getProperty(o, $name, $T) {
       return $T._as(o[$name]);
     },
+    _getPropertyTrustType(o, $name, $T) {
+      return o[$name];
+    },
     setProperty(o, $name, value, $T) {
       A.assertInterop(value);
       return o[$name] = value;
     },
     _callMethodUnchecked1(o, method, arg1, $T) {
       return $T._as(o[method](arg1));
+    },
+    _callMethodUnchecked2(o, method, arg1, arg2, $T) {
+      return $T._as(o[method](arg1, arg2));
     },
     unmangleGlobalNameIfPreservedAnyways($name) {
       return init.mangledGlobalNames[$name];
@@ -5593,31 +5626,6 @@ require('../node_preamble');
         return;
       }
       throw "Unable to print message: " + String(string);
-    },
-    main() {
-      var t1, moduleExports, t2;
-      A.print("DART - starting...");
-      A.print("DART - imported node_preamble.js");
-      t1 = type$.JSObject;
-      moduleExports = A.getProperty(A.staticInteropGlobalContext(), "exports", t1);
-      t2 = type$.void;
-      A._callMethodUnchecked1(A.getProperty(A.staticInteropGlobalContext(), "console", t1), "log", A.StringToJSString_get_toJS("DART - Module Exports:"), t2);
-      A._callMethodUnchecked1(A.getProperty(A.staticInteropGlobalContext(), "console", t1), "log", moduleExports, t2);
-      A.setProperty(moduleExports, "activate", A.FunctionToJSExportedDartFunction_get_toJS(A.allowInterop(A.extension__activateImplementation$closure(), type$.void_Function_JSObject)), type$.JavaScriptFunction);
-      A.print("Completed!");
-
-      console.log('global this:', globalThis);
-      console.log('self:', self);
-      
-      console.log('exporting...');
-      console.log('exports:', self.exports);
-      module.exports = self.exports;
-      
-      console.log('completed');
-    },
-    activateImplementation(context) {
-      type$.JSObject._as(context);
-      A.print('Congratulations, your extension "vscode_interop" is now active!');
     }
   },
   B = {};
@@ -6122,6 +6130,7 @@ require('../node_preamble');
     $requiredArgCount: 1,
     $defaultValues: null
   };
+  A.Closure0Args.prototype = {"call*": "call$0", $requiredArgCount: 0};
   A.Closure2Args.prototype = {"call*": "call$2", $requiredArgCount: 2};
   A.TearOffClosure.prototype = {};
   A.StaticClosure.prototype = {
@@ -9311,6 +9320,12 @@ require('../node_preamble');
   A.VertexArrayObjectOes.prototype = {$isVertexArrayObjectOes: 1};
   A.WebGL.prototype = {$isWebGL: 1};
   A._WebGL2RenderingContextBase.prototype = {$is_WebGL2RenderingContextBase: 1, $is_WebGLRenderingContextBase: 1};
+  A.activateImplementation_closure.prototype = {
+    call$0() {
+      A._callMethodUnchecked1(A._getPropertyTrustType(A.staticInteropGlobalContext(), "window", type$.Object), "showInformationMessage", "Hello World from Dart!", type$.JSObject);
+    },
+    $signature: 7
+  };
   (function aliases() {
     var _ = J.Interceptor.prototype;
     _.super$Interceptor$toString = _.toString$0;
@@ -9320,7 +9335,7 @@ require('../node_preamble');
   })();
   (function installTearOffs() {
     var _static_1 = hunkHelpers._static_1;
-    _static_1(A, "extension__activateImplementation$closure", "activateImplementation", 7);
+    _static_1(A, "extension__activateImplementation$closure", "activateImplementation", 8);
   })();
   (function inheritance() {
     var _mixinHard = hunkHelpers.mixinHard,
@@ -9339,7 +9354,7 @@ require('../node_preamble');
     _inherit(A.UnmodifiableMapView, A._UnmodifiableMapView_MapView__UnmodifiableMapMixin);
     _inherit(A.ConstantMapView, A.UnmodifiableMapView);
     _inherit(A.ConstantStringMap, A.ConstantMap);
-    _inheritMany(A.Closure, [A.Closure2Args, A.TearOffClosure, A.initHooks_closure, A.initHooks_closure1]);
+    _inheritMany(A.Closure, [A.Closure2Args, A.Closure0Args, A.TearOffClosure, A.initHooks_closure, A.initHooks_closure1]);
     _inheritMany(A.Closure2Args, [A.Primitives_functionNoSuchMethod_closure, A.initHooks_closure0, A.MapBase_mapToString_closure, A.NoSuchMethodError_toString_closure, A.MidiInputMap_keys_closure, A.MidiOutputMap_keys_closure, A.RtcStatsReport_keys_closure, A.Storage_keys_closure, A.AudioParamMap_keys_closure]);
     _inheritMany(A.TearOffClosure, [A.StaticClosure, A.BoundClosure]);
     _inherit(A._AssertionError, A.AssertionError);
@@ -9471,6 +9486,7 @@ require('../node_preamble');
     _inheritMany(A.AudioScheduledSourceNode, [A.AudioBufferSourceNode, A.ConstantSourceNode, A.OscillatorNode]);
     _inheritMany(A.BaseAudioContext, [A.AudioContext, A.OfflineAudioContext]);
     _inherit(A.AudioParamMap, A._AudioParamMap_JavaScriptObject_MapMixin);
+    _inherit(A.activateImplementation_closure, A.Closure0Args);
     _mixinHard(A._NativeTypedArrayOfDouble_NativeTypedArray_ListMixin, A.ListBase);
     _mixinHard(A._NativeTypedArrayOfDouble_NativeTypedArray_ListMixin_FixedLengthListMixin, A.FixedLengthListMixin);
     _mixinHard(A._NativeTypedArrayOfInt_NativeTypedArray_ListMixin, A.ListBase);
@@ -9529,7 +9545,7 @@ require('../node_preamble');
     typeUniverse: {eC: new Map(), tR: {}, eT: {}, tPV: {}, sEA: []},
     mangledGlobalNames: {int: "int", double: "double", num: "num", String: "String", bool: "bool", Null: "Null", List: "List", Object: "Object", Map: "Map"},
     mangledNames: {},
-    types: ["~(String,@)", "@(@)", "@(@,String)", "@(String)", "~(Object?,Object?)", "~(Symbol0,@)", "~(String,String)", "~(JSObject)"],
+    types: ["~(String,@)", "@(@)", "@(@,String)", "@(String)", "~(Object?,Object?)", "~(Symbol0,@)", "~(String,String)", "Null()", "~(JSObject)"],
     interceptorsByTag: null,
     leafTags: null,
     arrayRti: Symbol("$ti")
@@ -9545,6 +9561,7 @@ require('../node_preamble');
       Iterable_dynamic: findType("Iterable<@>"),
       JSArray_String: findType("JSArray<String>"),
       JSArray_dynamic: findType("JSArray<@>"),
+      JSArray_nullable_Object: findType("JSArray<Object?>"),
       JSNull: findType("JSNull"),
       JSObject: findType("JSObject"),
       JavaScriptFunction: findType("JavaScriptFunction"),

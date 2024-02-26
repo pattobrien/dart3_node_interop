@@ -70,13 +70,13 @@ void activateImplementation(ExtensionContext context) {
     'Congratulations, your extension "vscode_interop" is now active!',
   );
 
-  // var disposable = commands.registerCommand(
-  //     'vscode-interop.helloWorld',
-  //     () {
-  //       window.showInformationMessage('Hello World from Dart!');
-  //     }.toJS);
+  var disposable = commands.registerCommand(
+      'vscode-interop.helloWorld',
+      () {
+        window.showInformationMessage('Hello World from Dart!');
+      }.toJS);
 
-  // context.subscriptions.push(disposable);
+  context.subscriptions.push(disposable);
 }
 
 void deactivateImplementation() {}
