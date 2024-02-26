@@ -1,4 +1,4 @@
-@JS('window')
+@JS('vscode.window')
 library vscode.window;
 
 import 'dart:js_interop';

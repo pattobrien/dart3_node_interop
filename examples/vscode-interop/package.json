@@ -10,7 +10,7 @@
     "Other"
   ],
   "activationEvents": [],
-  "main": "./build/gen/extension.dart.js",
+  "main": "./build/main_with_preamble.js",
   "contributes": {
     "commands": [
       {

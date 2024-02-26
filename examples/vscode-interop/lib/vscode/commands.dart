@@ -1,9 +1,9 @@
-@JS('commands')
-library vscode.commands;
+// @JS('commands')
+// library vscode.commands;
 
 import 'dart:js_interop';
 
 import 'vscode.dart';
 
-@JS('commands.registerCommand')
+@JS('vscode.commands.registerCommand')
 external Disposable registerCommand(String command, JSFunction callback);

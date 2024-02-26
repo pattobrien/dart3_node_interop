@@ -30,7 +30,6 @@
 //    if this function is defined, it will be called at each entry of a
 //    method or constructor. Used only when compiling programs with
 //    --experiment-call-instrumentation.
-require('../node_preamble');
 (function dartProgram() {
   function copyProperties(from, to) {
     var keys = Object.keys(from);
@@ -1434,8 +1433,6 @@ require('../node_preamble');
       return typeof f == "function";
     },
     assertInterop(value) {
-    },
-    assertInteropArgs(args) {
     },
     staticInteropGlobalContext() {
       return self;
@@ -6326,8 +6323,7 @@ require('../node_preamble');
     },
     main() {
       var $async$goto = 0,
-        $async$completer = A._makeAsyncAwaitCompleter(type$.void),
-        t1, moduleExports, t2, gExports;
+        $async$completer = A._makeAsyncAwaitCompleter(type$.void);
       var $async$main = A._wrapJsFunctionForAsync(function($async$errorCode, $async$result) {
         if ($async$errorCode === 1)
           return A._asyncRethrow($async$result, $async$completer);
@@ -6336,18 +6332,7 @@ require('../node_preamble');
             case 0:
               // Function start
               A.print("DART - starting...");
-              A.print("DART - imported node_preamble.js");
-              t1 = type$.JSObject;
-              moduleExports = A.getProperty(A.staticInteropGlobalContext(), "exports", t1);
-              t2 = type$.void;
-              A._callMethodUnchecked1(A.getProperty(A.staticInteropGlobalContext(), "console", t1), "log", A.StringToJSString_get_toJS("DART - Module Exports:"), t2);
-              A._callMethodUnchecked1(A.getProperty(A.staticInteropGlobalContext(), "console", t1), "log", moduleExports, t2);
-              A.setProperty(moduleExports, "activate", A.FunctionToJSExportedDartFunction_get_toJS(A.allowInterop(A.extension__activateImplementation$closure(), type$.void_Function_JSObject)), type$.JavaScriptFunction);
-              gExports = A.JSObjectUnsafeUtilExtension_getProperty(A.globalContext(), A.StringToJSString_get_toJS("exports"), type$.nullable_Object);
-              A._callMethodUnchecked1(A.getProperty(A.staticInteropGlobalContext(), "console", t1), "log", A.StringToJSString_get_toJS("DART - gExports:"), t2);
-              A.callMethod(A.getProperty(A.staticInteropGlobalContext(), "console", t1), "log", [gExports], t2);
-              if (A.getProperty(A.globalThis(), "exports", type$.dynamic) != null)
-                A.print("f");
+              A.setProperty(A.getProperty(A.staticInteropGlobalContext(), "exports", type$.JSObject), "activate", A.FunctionToJSExportedDartFunction_get_toJS(A.allowInterop(A.extension__activateImplementation$closure(), type$.void_Function_JSObject)), type$.JavaScriptFunction);
               A.print("Completed!");
               // implicit return
               return A._asyncReturn(null, $async$completer);
@@ -6357,12 +6342,11 @@ require('../node_preamble');
     },
     activateImplementation(context) {
       var t2, disposable,
-        _s8_ = "commands",
         t1 = type$.JSObject;
       t1._as(context);
       A.print('Congratulations, your extension "vscode_interop" is now active!');
       t2 = type$.Object;
-      disposable = A._callMethodUnchecked2(A._getPropertyTrustType(A._getPropertyTrustType(A.staticInteropGlobalContext(), _s8_, t2), _s8_, t2), "registerCommand", "vscode-interop.helloWorld", A.FunctionToJSExportedDartFunction_get_toJS(new A.activateImplementation_closure()), t1);
+      disposable = A._callMethodUnchecked2(A._getPropertyTrustType(A._getPropertyTrustType(A.staticInteropGlobalContext(), "vscode", t2), "commands", t2), "registerCommand", "vscode-interop.helloWorld", A.FunctionToJSExportedDartFunction_get_toJS(new A.activateImplementation_closure()), t1);
       A._callMethodUnchecked1(A.getProperty(context, "subscriptions", type$.JSArray_nullable_Object), "push", disposable, type$.void);
     },
     activateImplementation_closure: function activateImplementation_closure() {
@@ -6431,14 +6415,8 @@ require('../node_preamble');
         t1 = true;
       return t1;
     },
-    globalContext() {
-      return type$.JSObject._as(A.staticInteropGlobalContext());
-    },
     FunctionToJSExportedDartFunction_get_toJS(_this) {
       return type$.JavaScriptFunction._as(A.allowInterop(_this, type$.Function));
-    },
-    StringToJSString_get_toJS(_this) {
-      return _this;
     },
     _convertDartFunctionFast(f) {
       var ret,
@@ -6464,9 +6442,6 @@ require('../node_preamble');
       else
         return $F._as(A._convertDartFunctionFast(f));
     },
-    globalThis() {
-      return globalThis;
-    },
     getProperty(o, $name, $T) {
       return $T._as(o[$name]);
     },
@@ -6476,10 +6451,6 @@ require('../node_preamble');
     setProperty(o, $name, value, $T) {
       A.assertInterop(value);
       return o[$name] = value;
-    },
-    callMethod(o, method, args, $T) {
-      A.assertInteropArgs(args);
-      return $T._as(o[method].apply(o, args));
     },
     _callMethodUnchecked1(o, method, arg1, $T) {
       return $T._as(o[method](arg1));
@@ -6504,9 +6475,6 @@ require('../node_preamble');
         return;
       }
       throw "Unable to print message: " + String(string);
-    },
-    JSObjectUnsafeUtilExtension_getProperty(_this, property, $T) {
-      return $T._as(_this[property]);
     }
   },
   B = {};
@@ -11134,7 +11102,8 @@ require('../node_preamble');
   A._WebGL2RenderingContextBase.prototype = {$is_WebGL2RenderingContextBase: 1, $is_WebGLRenderingContextBase: 1};
   A.activateImplementation_closure.prototype = {
     call$0() {
-      A._callMethodUnchecked1(A._getPropertyTrustType(A.staticInteropGlobalContext(), "window", type$.Object), "showInformationMessage", "Hello World from Dart!", type$.JSObject);
+      var t1 = type$.Object;
+      A._callMethodUnchecked1(A._getPropertyTrustType(A._getPropertyTrustType(A.staticInteropGlobalContext(), "vscode", t1), "window", t1), "showInformationMessage", "Hello World from Dart!", type$.JSObject);
     },
     $signature: 2
   };

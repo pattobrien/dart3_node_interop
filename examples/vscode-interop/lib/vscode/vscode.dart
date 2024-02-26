@@ -3,6 +3,11 @@ library vscode;
 
 import 'dart:js_interop';
 
+// @JS()
+// extension type VSCode(JSObject obj) implements JSObject {
+//   external Commands
+// }
+
 @JS()
 extension type ModuleExports(JSObject obj) implements JSObject {
   external void activate(ExtensionContext context);

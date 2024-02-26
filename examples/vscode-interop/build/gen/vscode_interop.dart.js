@@ -3782,12 +3782,11 @@
     },
     _activateImpl(context) {
       var t2, disposable,
-        _s8_ = "commands",
         t1 = type$.JSObject;
       t1._as(context);
       A.print("activate!");
       t2 = type$.Object;
-      disposable = A._callMethodUnchecked2(A._getPropertyTrustType(A._getPropertyTrustType(A.staticInteropGlobalContext(), _s8_, t2), _s8_, t2), "registerCommand", "vscode-interop.helloWorld", A.FunctionToJSExportedDartFunction_get_toJS(new A._activateImpl_closure()), t1);
+      disposable = A._callMethodUnchecked2(A._getPropertyTrustType(A._getPropertyTrustType(A.staticInteropGlobalContext(), "vscode", t2), "commands", t2), "registerCommand", "vscode-interop.helloWorld", A.FunctionToJSExportedDartFunction_get_toJS(new A._activateImpl_closure()), t1);
       A._callMethodUnchecked1(A.getProperty(context, "subscriptions", type$.JSArray_nullable_Object), "push", disposable, type$.void);
     },
     _activateImpl_closure: function _activateImpl_closure() {
@@ -5280,7 +5279,8 @@
   };
   A._activateImpl_closure.prototype = {
     call$0() {
-      A._callMethodUnchecked1(A._getPropertyTrustType(A.staticInteropGlobalContext(), "window", type$.Object), "showInformationMessage", "Hello World from Dart!", type$.JSObject);
+      var t1 = type$.Object;
+      A._callMethodUnchecked1(A._getPropertyTrustType(A._getPropertyTrustType(A.staticInteropGlobalContext(), "vscode", t1), "window", t1), "showInformationMessage", "Hello World from Dart!", type$.JSObject);
     },
     $signature: 6
   };

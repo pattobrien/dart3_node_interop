@@ -21,31 +21,16 @@ import 'package:vscode_interop/vscode_interop.dart';
 
 Future<void> main() async {
   print('DART - starting...');
-
-  final moduleExports = exports;
-  console.log('DART - Module Exports:'.toJS);
-  console.log(moduleExports);
-  moduleExports.activateSetter = allowInterop(activateImplementation).toJS;
-
-  final gExports = globalContext.getProperty('exports'.toJS);
-  console.log('DART - gExports:'.toJS);
-  console.log(gExports);
-
-  final ggExports = getProperty(globalThis, 'exports');
-  if (ggExports != null) {
-    print('f');
-  }
-  // final hasProperty = globalContext.hasProperty('exports'.toJS);
-  // console.log('DART - hasProperty:'.toJS);
-  // console.log(hasProperty);
-
+  // await importModule('vscode').toDart;
+  // print('DART - vscode imported');
+  exports.activateSetter = allowInterop(activateImplementation).toJS;
   print('Completed!');
 }
 
-@JS('exports')
+@JS()
 external set exports(ModuleExports value);
 
-@JS('exports')
+@JS()
 external ModuleExports get exports;
 
 void activateImplementation(ExtensionContext context) {
