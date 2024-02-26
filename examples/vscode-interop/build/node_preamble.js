@@ -116,5 +116,6 @@ if (dartNodeIsActuallyNode) {
   };
 }
 
-// ADDED THIS LINE
+// // ADDED THIS LINE
 globalThis.self = self;
+module.exports.self = self;

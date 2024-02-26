@@ -19,51 +19,34 @@ import 'package:vscode_interop/vscode_interop.dart';
 // - how do we export functions? (e.g. `activate`). doing so in the global scope
 //   using `@JSExport` causes an error.
 
-void main() {
-  // _activate = allowInterop(activateImplementation).toJS;
-  // await importModule('../node_preamble.js').toDart;
+Future<void> main() async {
   print('DART - starting...');
-  print('DART - imported node_preamble.js');
 
-  // activate(ExtensionContext({}.toJSBox));
-  // exports = ModuleExports({}.toJSBox);
   final moduleExports = exports;
   console.log('DART - Module Exports:'.toJS);
   console.log(moduleExports);
   moduleExports.activateSetter = allowInterop(activateImplementation).toJS;
 
-  // // _activate = allowInterop(activateImplementation).toJS;
-  // console.log('DART - Exports:'.toJS);
-  // console.log(exports);
+  final gExports = globalContext.getProperty('exports'.toJS);
+  console.log('DART - gExports:'.toJS);
+  console.log(gExports);
 
-  // // globalThis exports
-  // final globalThisExports = globalContext;
-  // console.log('GlobalThis Exports:'.toJS);
-  // console.log(globalThisExports);
+  final ggExports = getProperty(globalThis, 'exports');
+  if (ggExports != null) {
+    print('f');
+  }
+  // final hasProperty = globalContext.hasProperty('exports'.toJS);
+  // console.log('DART - hasProperty:'.toJS);
+  // console.log(hasProperty);
 
   print('Completed!');
 }
-
-// @JS()
-// external Module get module;
-
-// @JS()
-// extension type Module(JSObject obj) implements JSObject {
-//   external set exports(ModuleExports value);
-//   external ModuleExports get exports;
-// }
 
 @JS('exports')
 external set exports(ModuleExports value);
 
 @JS('exports')
 external ModuleExports get exports;
-
-// @JS('exports.activate')
-// external set _activate(JSFunction value);
-
-// @JS('exports.activate')
-// external void activate(ExtensionContext context);
 
 void activateImplementation(ExtensionContext context) {
   print(
